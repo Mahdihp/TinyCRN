@@ -46,13 +46,68 @@ var (
 	}
 	// TicketsColumns holds the columns for the "tickets" table.
 	TicketsColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "title", Type: field.TypeString, Size: 50},
+		{Name: "content", Type: field.TypeString, Size: 500},
+		{Name: "status", Type: field.TypeInt},
+		{Name: "ticket_file_id", Type: field.TypeString},
+		{Name: "is_viewed", Type: field.TypeBool},
 	}
 	// TicketsTable holds the schema information for the "tickets" table.
 	TicketsTable = &schema.Table{
 		Name:       "tickets",
 		Columns:    TicketsColumns,
 		PrimaryKey: []*schema.Column{TicketsColumns[0]},
+	}
+	// CustomerTicketsColumns holds the columns for the "customer_tickets" table.
+	CustomerTicketsColumns = []*schema.Column{
+		{Name: "customer_id", Type: field.TypeInt},
+		{Name: "ticket_id", Type: field.TypeInt64},
+	}
+	// CustomerTicketsTable holds the schema information for the "customer_tickets" table.
+	CustomerTicketsTable = &schema.Table{
+		Name:       "customer_tickets",
+		Columns:    CustomerTicketsColumns,
+		PrimaryKey: []*schema.Column{CustomerTicketsColumns[0], CustomerTicketsColumns[1]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "customer_tickets_customer_id",
+				Columns:    []*schema.Column{CustomerTicketsColumns[0]},
+				RefColumns: []*schema.Column{CustomersColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+			{
+				Symbol:     "customer_tickets_ticket_id",
+				Columns:    []*schema.Column{CustomerTicketsColumns[1]},
+				RefColumns: []*schema.Column{TicketsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+	}
+	// DepartmentTicketsColumns holds the columns for the "department_tickets" table.
+	DepartmentTicketsColumns = []*schema.Column{
+		{Name: "department_id", Type: field.TypeInt},
+		{Name: "ticket_id", Type: field.TypeInt64},
+	}
+	// DepartmentTicketsTable holds the schema information for the "department_tickets" table.
+	DepartmentTicketsTable = &schema.Table{
+		Name:       "department_tickets",
+		Columns:    DepartmentTicketsColumns,
+		PrimaryKey: []*schema.Column{DepartmentTicketsColumns[0], DepartmentTicketsColumns[1]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "department_tickets_department_id",
+				Columns:    []*schema.Column{DepartmentTicketsColumns[0]},
+				RefColumns: []*schema.Column{DepartmentsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+			{
+				Symbol:     "department_tickets_ticket_id",
+				Columns:    []*schema.Column{DepartmentTicketsColumns[1]},
+				RefColumns: []*schema.Column{TicketsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
 	}
 	// ExpertDepartmentColumns holds the columns for the "expert_department" table.
 	ExpertDepartmentColumns = []*schema.Column{
@@ -79,17 +134,51 @@ var (
 			},
 		},
 	}
+	// ExpertTicketsColumns holds the columns for the "expert_tickets" table.
+	ExpertTicketsColumns = []*schema.Column{
+		{Name: "expert_id", Type: field.TypeInt},
+		{Name: "ticket_id", Type: field.TypeInt64},
+	}
+	// ExpertTicketsTable holds the schema information for the "expert_tickets" table.
+	ExpertTicketsTable = &schema.Table{
+		Name:       "expert_tickets",
+		Columns:    ExpertTicketsColumns,
+		PrimaryKey: []*schema.Column{ExpertTicketsColumns[0], ExpertTicketsColumns[1]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "expert_tickets_expert_id",
+				Columns:    []*schema.Column{ExpertTicketsColumns[0]},
+				RefColumns: []*schema.Column{ExpertsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+			{
+				Symbol:     "expert_tickets_ticket_id",
+				Columns:    []*schema.Column{ExpertTicketsColumns[1]},
+				RefColumns: []*schema.Column{TicketsColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		CustomersTable,
 		DepartmentsTable,
 		ExpertsTable,
 		TicketsTable,
+		CustomerTicketsTable,
+		DepartmentTicketsTable,
 		ExpertDepartmentTable,
+		ExpertTicketsTable,
 	}
 )
 
 func init() {
+	CustomerTicketsTable.ForeignKeys[0].RefTable = CustomersTable
+	CustomerTicketsTable.ForeignKeys[1].RefTable = TicketsTable
+	DepartmentTicketsTable.ForeignKeys[0].RefTable = DepartmentsTable
+	DepartmentTicketsTable.ForeignKeys[1].RefTable = TicketsTable
 	ExpertDepartmentTable.ForeignKeys[0].RefTable = ExpertsTable
 	ExpertDepartmentTable.ForeignKeys[1].RefTable = DepartmentsTable
+	ExpertTicketsTable.ForeignKeys[0].RefTable = ExpertsTable
+	ExpertTicketsTable.ForeignKeys[1].RefTable = TicketsTable
 }

@@ -6,6 +6,7 @@ import (
 	"TinyCRM/ent/department"
 	"TinyCRM/ent/expert"
 	"TinyCRM/ent/predicate"
+	"TinyCRM/ent/ticket"
 	"context"
 	"database/sql/driver"
 	"fmt"
@@ -25,6 +26,7 @@ type ExpertQuery struct {
 	inters         []Interceptor
 	predicates     []predicate.Expert
 	withDepartment *DepartmentQuery
+	withTickets    *TicketQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -76,6 +78,28 @@ func (eq *ExpertQuery) QueryDepartment() *DepartmentQuery {
 			sqlgraph.From(expert.Table, expert.FieldID, selector),
 			sqlgraph.To(department.Table, department.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, false, expert.DepartmentTable, expert.DepartmentPrimaryKey...),
+		)
+		fromU = sqlgraph.SetNeighbors(eq.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryTickets chains the current query on the "tickets" edge.
+func (eq *ExpertQuery) QueryTickets() *TicketQuery {
+	query := (&TicketClient{config: eq.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := eq.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := eq.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(expert.Table, expert.FieldID, selector),
+			sqlgraph.To(ticket.Table, ticket.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, expert.TicketsTable, expert.TicketsPrimaryKey...),
 		)
 		fromU = sqlgraph.SetNeighbors(eq.driver.Dialect(), step)
 		return fromU, nil
@@ -276,6 +300,7 @@ func (eq *ExpertQuery) Clone() *ExpertQuery {
 		inters:         append([]Interceptor{}, eq.inters...),
 		predicates:     append([]predicate.Expert{}, eq.predicates...),
 		withDepartment: eq.withDepartment.Clone(),
+		withTickets:    eq.withTickets.Clone(),
 		// clone intermediate query.
 		sql:  eq.sql.Clone(),
 		path: eq.path,
@@ -290,6 +315,17 @@ func (eq *ExpertQuery) WithDepartment(opts ...func(*DepartmentQuery)) *ExpertQue
 		opt(query)
 	}
 	eq.withDepartment = query
+	return eq
+}
+
+// WithTickets tells the query-builder to eager-load the nodes that are connected to
+// the "tickets" edge. The optional arguments are used to configure the query builder of the edge.
+func (eq *ExpertQuery) WithTickets(opts ...func(*TicketQuery)) *ExpertQuery {
+	query := (&TicketClient{config: eq.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	eq.withTickets = query
 	return eq
 }
 
@@ -371,8 +407,9 @@ func (eq *ExpertQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Exper
 	var (
 		nodes       = []*Expert{}
 		_spec       = eq.querySpec()
-		loadedTypes = [1]bool{
+		loadedTypes = [2]bool{
 			eq.withDepartment != nil,
+			eq.withTickets != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -397,6 +434,13 @@ func (eq *ExpertQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Exper
 		if err := eq.loadDepartment(ctx, query, nodes,
 			func(n *Expert) { n.Edges.Department = []*Department{} },
 			func(n *Expert, e *Department) { n.Edges.Department = append(n.Edges.Department, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := eq.withTickets; query != nil {
+		if err := eq.loadTickets(ctx, query, nodes,
+			func(n *Expert) { n.Edges.Tickets = []*Ticket{} },
+			func(n *Expert, e *Ticket) { n.Edges.Tickets = append(n.Edges.Tickets, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -457,6 +501,67 @@ func (eq *ExpertQuery) loadDepartment(ctx context.Context, query *DepartmentQuer
 		nodes, ok := nids[n.ID]
 		if !ok {
 			return fmt.Errorf(`unexpected "department" node returned %v`, n.ID)
+		}
+		for kn := range nodes {
+			assign(kn, n)
+		}
+	}
+	return nil
+}
+func (eq *ExpertQuery) loadTickets(ctx context.Context, query *TicketQuery, nodes []*Expert, init func(*Expert), assign func(*Expert, *Ticket)) error {
+	edgeIDs := make([]driver.Value, len(nodes))
+	byID := make(map[int]*Expert)
+	nids := make(map[int64]map[*Expert]struct{})
+	for i, node := range nodes {
+		edgeIDs[i] = node.ID
+		byID[node.ID] = node
+		if init != nil {
+			init(node)
+		}
+	}
+	query.Where(func(s *sql.Selector) {
+		joinT := sql.Table(expert.TicketsTable)
+		s.Join(joinT).On(s.C(ticket.FieldID), joinT.C(expert.TicketsPrimaryKey[1]))
+		s.Where(sql.InValues(joinT.C(expert.TicketsPrimaryKey[0]), edgeIDs...))
+		columns := s.SelectedColumns()
+		s.Select(joinT.C(expert.TicketsPrimaryKey[0]))
+		s.AppendSelect(columns...)
+		s.SetDistinct(false)
+	})
+	if err := query.prepareQuery(ctx); err != nil {
+		return err
+	}
+	qr := QuerierFunc(func(ctx context.Context, q Query) (Value, error) {
+		return query.sqlAll(ctx, func(_ context.Context, spec *sqlgraph.QuerySpec) {
+			assign := spec.Assign
+			values := spec.ScanValues
+			spec.ScanValues = func(columns []string) ([]any, error) {
+				values, err := values(columns[1:])
+				if err != nil {
+					return nil, err
+				}
+				return append([]any{new(sql.NullInt64)}, values...), nil
+			}
+			spec.Assign = func(columns []string, values []any) error {
+				outValue := int(values[0].(*sql.NullInt64).Int64)
+				inValue := values[1].(*sql.NullInt64).Int64
+				if nids[inValue] == nil {
+					nids[inValue] = map[*Expert]struct{}{byID[outValue]: {}}
+					return assign(columns[1:], values[1:])
+				}
+				nids[inValue][byID[outValue]] = struct{}{}
+				return nil
+			}
+		})
+	})
+	neighbors, err := withInterceptors[[]*Ticket](ctx, query, qr, query.inters)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected "tickets" node returned %v`, n.ID)
 		}
 		for kn := range nodes {
 			assign(kn, n)

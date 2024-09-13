@@ -393,6 +393,29 @@ func HasDepartmentWith(preds ...predicate.Department) predicate.Expert {
 	})
 }
 
+// HasTickets applies the HasEdge predicate on the "tickets" edge.
+func HasTickets() predicate.Expert {
+	return predicate.Expert(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, TicketsTable, TicketsPrimaryKey...),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasTicketsWith applies the HasEdge predicate on the "tickets" edge with a given conditions (other predicates).
+func HasTicketsWith(preds ...predicate.Ticket) predicate.Expert {
+	return predicate.Expert(func(s *sql.Selector) {
+		step := newTicketsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Expert) predicate.Expert {
 	return predicate.Expert(sql.AndPredicates(predicates...))

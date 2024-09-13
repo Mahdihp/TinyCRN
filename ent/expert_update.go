@@ -6,6 +6,7 @@ import (
 	"TinyCRM/ent/department"
 	"TinyCRM/ent/expert"
 	"TinyCRM/ent/predicate"
+	"TinyCRM/ent/ticket"
 	"context"
 	"errors"
 	"fmt"
@@ -128,6 +129,21 @@ func (eu *ExpertUpdate) AddDepartment(d ...*Department) *ExpertUpdate {
 	return eu.AddDepartmentIDs(ids...)
 }
 
+// AddTicketIDs adds the "tickets" edge to the Ticket entity by IDs.
+func (eu *ExpertUpdate) AddTicketIDs(ids ...int64) *ExpertUpdate {
+	eu.mutation.AddTicketIDs(ids...)
+	return eu
+}
+
+// AddTickets adds the "tickets" edges to the Ticket entity.
+func (eu *ExpertUpdate) AddTickets(t ...*Ticket) *ExpertUpdate {
+	ids := make([]int64, len(t))
+	for i := range t {
+		ids[i] = t[i].ID
+	}
+	return eu.AddTicketIDs(ids...)
+}
+
 // Mutation returns the ExpertMutation object of the builder.
 func (eu *ExpertUpdate) Mutation() *ExpertMutation {
 	return eu.mutation
@@ -152,6 +168,27 @@ func (eu *ExpertUpdate) RemoveDepartment(d ...*Department) *ExpertUpdate {
 		ids[i] = d[i].ID
 	}
 	return eu.RemoveDepartmentIDs(ids...)
+}
+
+// ClearTickets clears all "tickets" edges to the Ticket entity.
+func (eu *ExpertUpdate) ClearTickets() *ExpertUpdate {
+	eu.mutation.ClearTickets()
+	return eu
+}
+
+// RemoveTicketIDs removes the "tickets" edge to Ticket entities by IDs.
+func (eu *ExpertUpdate) RemoveTicketIDs(ids ...int64) *ExpertUpdate {
+	eu.mutation.RemoveTicketIDs(ids...)
+	return eu
+}
+
+// RemoveTickets removes "tickets" edges to Ticket entities.
+func (eu *ExpertUpdate) RemoveTickets(t ...*Ticket) *ExpertUpdate {
+	ids := make([]int64, len(t))
+	for i := range t {
+		ids[i] = t[i].ID
+	}
+	return eu.RemoveTicketIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -269,6 +306,51 @@ func (eu *ExpertUpdate) sqlSave(ctx context.Context) (n int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(department.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if eu.mutation.TicketsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   expert.TicketsTable,
+			Columns: expert.TicketsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(ticket.FieldID, field.TypeInt64),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := eu.mutation.RemovedTicketsIDs(); len(nodes) > 0 && !eu.mutation.TicketsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   expert.TicketsTable,
+			Columns: expert.TicketsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(ticket.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := eu.mutation.TicketsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   expert.TicketsTable,
+			Columns: expert.TicketsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(ticket.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
@@ -395,6 +477,21 @@ func (euo *ExpertUpdateOne) AddDepartment(d ...*Department) *ExpertUpdateOne {
 	return euo.AddDepartmentIDs(ids...)
 }
 
+// AddTicketIDs adds the "tickets" edge to the Ticket entity by IDs.
+func (euo *ExpertUpdateOne) AddTicketIDs(ids ...int64) *ExpertUpdateOne {
+	euo.mutation.AddTicketIDs(ids...)
+	return euo
+}
+
+// AddTickets adds the "tickets" edges to the Ticket entity.
+func (euo *ExpertUpdateOne) AddTickets(t ...*Ticket) *ExpertUpdateOne {
+	ids := make([]int64, len(t))
+	for i := range t {
+		ids[i] = t[i].ID
+	}
+	return euo.AddTicketIDs(ids...)
+}
+
 // Mutation returns the ExpertMutation object of the builder.
 func (euo *ExpertUpdateOne) Mutation() *ExpertMutation {
 	return euo.mutation
@@ -419,6 +516,27 @@ func (euo *ExpertUpdateOne) RemoveDepartment(d ...*Department) *ExpertUpdateOne 
 		ids[i] = d[i].ID
 	}
 	return euo.RemoveDepartmentIDs(ids...)
+}
+
+// ClearTickets clears all "tickets" edges to the Ticket entity.
+func (euo *ExpertUpdateOne) ClearTickets() *ExpertUpdateOne {
+	euo.mutation.ClearTickets()
+	return euo
+}
+
+// RemoveTicketIDs removes the "tickets" edge to Ticket entities by IDs.
+func (euo *ExpertUpdateOne) RemoveTicketIDs(ids ...int64) *ExpertUpdateOne {
+	euo.mutation.RemoveTicketIDs(ids...)
+	return euo
+}
+
+// RemoveTickets removes "tickets" edges to Ticket entities.
+func (euo *ExpertUpdateOne) RemoveTickets(t ...*Ticket) *ExpertUpdateOne {
+	ids := make([]int64, len(t))
+	for i := range t {
+		ids[i] = t[i].ID
+	}
+	return euo.RemoveTicketIDs(ids...)
 }
 
 // Where appends a list predicates to the ExpertUpdate builder.
@@ -566,6 +684,51 @@ func (euo *ExpertUpdateOne) sqlSave(ctx context.Context) (_node *Expert, err err
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(department.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if euo.mutation.TicketsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   expert.TicketsTable,
+			Columns: expert.TicketsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(ticket.FieldID, field.TypeInt64),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := euo.mutation.RemovedTicketsIDs(); len(nodes) > 0 && !euo.mutation.TicketsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   expert.TicketsTable,
+			Columns: expert.TicketsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(ticket.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := euo.mutation.TicketsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   expert.TicketsTable,
+			Columns: expert.TicketsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(ticket.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {

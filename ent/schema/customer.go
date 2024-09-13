@@ -1,6 +1,9 @@
 package schema
 
-import "entgo.io/ent"
+import (
+	"entgo.io/ent"
+	"entgo.io/ent/schema/edge"
+)
 
 // Customer holds the schema definition for the Customer entity.
 type Customer struct {
@@ -14,5 +17,7 @@ func (Customer) Fields() []ent.Field {
 
 // Edges of the Customer.
 func (Customer) Edges() []ent.Edge {
-	return nil
+	return []ent.Edge{
+		edge.To("tickets", Ticket.Type),
+	}
 }

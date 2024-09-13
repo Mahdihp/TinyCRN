@@ -5,6 +5,7 @@ package ent
 import (
 	"TinyCRM/ent/expert"
 	"TinyCRM/ent/schema"
+	"TinyCRM/ent/ticket"
 	"time"
 )
 
@@ -34,4 +35,14 @@ func init() {
 	expertDescEndTime := expertFields[5].Descriptor()
 	// expert.DefaultEndTime holds the default value on creation for the end_time field.
 	expert.DefaultEndTime = expertDescEndTime.Default.(func() time.Time)
+	ticketFields := schema.Ticket{}.Fields()
+	_ = ticketFields
+	// ticketDescTitle is the schema descriptor for title field.
+	ticketDescTitle := ticketFields[1].Descriptor()
+	// ticket.TitleValidator is a validator for the "title" field. It is called by the builders before save.
+	ticket.TitleValidator = ticketDescTitle.Validators[0].(func(string) error)
+	// ticketDescContent is the schema descriptor for content field.
+	ticketDescContent := ticketFields[2].Descriptor()
+	// ticket.ContentValidator is a validator for the "content" field. It is called by the builders before save.
+	ticket.ContentValidator = ticketDescContent.Validators[0].(func(string) error)
 }

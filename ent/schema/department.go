@@ -18,7 +18,7 @@ func (Department) Fields() []ent.Field {
 // Edges of the Department.
 func (Department) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.From("expert", Expert.Type).
-			Ref("department"),
+		edge.From("expert", Expert.Type).Ref("department"),
+		edge.To("tickets", Ticket.Type),
 	}
 }

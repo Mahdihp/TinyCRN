@@ -39,9 +39,11 @@ type Expert struct {
 type ExpertEdges struct {
 	// Department holds the value of the department edge.
 	Department []*Department `json:"department,omitempty"`
+	// Tickets holds the value of the tickets edge.
+	Tickets []*Ticket `json:"tickets,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
 }
 
 // DepartmentOrErr returns the Department value or an error if the edge
@@ -51,6 +53,15 @@ func (e ExpertEdges) DepartmentOrErr() ([]*Department, error) {
 		return e.Department, nil
 	}
 	return nil, &NotLoadedError{edge: "department"}
+}
+
+// TicketsOrErr returns the Tickets value or an error if the edge
+// was not loaded in eager-loading.
+func (e ExpertEdges) TicketsOrErr() ([]*Ticket, error) {
+	if e.loadedTypes[1] {
+		return e.Tickets, nil
+	}
+	return nil, &NotLoadedError{edge: "tickets"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -139,6 +150,11 @@ func (e *Expert) Value(name string) (ent.Value, error) {
 // QueryDepartment queries the "department" edge of the Expert entity.
 func (e *Expert) QueryDepartment() *DepartmentQuery {
 	return NewExpertClient(e.config).QueryDepartment(e)
+}
+
+// QueryTickets queries the "tickets" edge of the Expert entity.
+func (e *Expert) QueryTickets() *TicketQuery {
+	return NewExpertClient(e.config).QueryTickets(e)
 }
 
 // Update returns a builder for updating this Expert.

@@ -3,9 +3,11 @@
 package ent
 
 import (
+	"TinyCRM/ent/customer"
 	"TinyCRM/ent/department"
 	"TinyCRM/ent/expert"
 	"TinyCRM/ent/predicate"
+	"TinyCRM/ent/ticket"
 	"context"
 	"errors"
 	"fmt"
@@ -34,13 +36,16 @@ const (
 // CustomerMutation represents an operation that mutates the Customer nodes in the graph.
 type CustomerMutation struct {
 	config
-	op            Op
-	typ           string
-	id            *int
-	clearedFields map[string]struct{}
-	done          bool
-	oldValue      func(context.Context) (*Customer, error)
-	predicates    []predicate.Customer
+	op             Op
+	typ            string
+	id             *int
+	clearedFields  map[string]struct{}
+	tickets        map[int64]struct{}
+	removedtickets map[int64]struct{}
+	clearedtickets bool
+	done           bool
+	oldValue       func(context.Context) (*Customer, error)
+	predicates     []predicate.Customer
 }
 
 var _ ent.Mutation = (*CustomerMutation)(nil)
@@ -139,6 +144,60 @@ func (m *CustomerMutation) IDs(ctx context.Context) ([]int, error) {
 	default:
 		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
 	}
+}
+
+// AddTicketIDs adds the "tickets" edge to the Ticket entity by ids.
+func (m *CustomerMutation) AddTicketIDs(ids ...int64) {
+	if m.tickets == nil {
+		m.tickets = make(map[int64]struct{})
+	}
+	for i := range ids {
+		m.tickets[ids[i]] = struct{}{}
+	}
+}
+
+// ClearTickets clears the "tickets" edge to the Ticket entity.
+func (m *CustomerMutation) ClearTickets() {
+	m.clearedtickets = true
+}
+
+// TicketsCleared reports if the "tickets" edge to the Ticket entity was cleared.
+func (m *CustomerMutation) TicketsCleared() bool {
+	return m.clearedtickets
+}
+
+// RemoveTicketIDs removes the "tickets" edge to the Ticket entity by IDs.
+func (m *CustomerMutation) RemoveTicketIDs(ids ...int64) {
+	if m.removedtickets == nil {
+		m.removedtickets = make(map[int64]struct{})
+	}
+	for i := range ids {
+		delete(m.tickets, ids[i])
+		m.removedtickets[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedTickets returns the removed IDs of the "tickets" edge to the Ticket entity.
+func (m *CustomerMutation) RemovedTicketsIDs() (ids []int64) {
+	for id := range m.removedtickets {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// TicketsIDs returns the "tickets" edge IDs in the mutation.
+func (m *CustomerMutation) TicketsIDs() (ids []int64) {
+	for id := range m.tickets {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetTickets resets all changes to the "tickets" edge.
+func (m *CustomerMutation) ResetTickets() {
+	m.tickets = nil
+	m.clearedtickets = false
+	m.removedtickets = nil
 }
 
 // Where appends a list predicates to the CustomerMutation builder.
@@ -249,65 +308,104 @@ func (m *CustomerMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *CustomerMutation) AddedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.tickets != nil {
+		edges = append(edges, customer.EdgeTickets)
+	}
 	return edges
 }
 
 // AddedIDs returns all IDs (to other nodes) that were added for the given edge
 // name in this mutation.
 func (m *CustomerMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case customer.EdgeTickets:
+		ids := make([]ent.Value, 0, len(m.tickets))
+		for id := range m.tickets {
+			ids = append(ids, id)
+		}
+		return ids
+	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *CustomerMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.removedtickets != nil {
+		edges = append(edges, customer.EdgeTickets)
+	}
 	return edges
 }
 
 // RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
 // the given name in this mutation.
 func (m *CustomerMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case customer.EdgeTickets:
+		ids := make([]ent.Value, 0, len(m.removedtickets))
+		for id := range m.removedtickets {
+			ids = append(ids, id)
+		}
+		return ids
+	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *CustomerMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 1)
+	if m.clearedtickets {
+		edges = append(edges, customer.EdgeTickets)
+	}
 	return edges
 }
 
 // EdgeCleared returns a boolean which indicates if the edge with the given name
 // was cleared in this mutation.
 func (m *CustomerMutation) EdgeCleared(name string) bool {
+	switch name {
+	case customer.EdgeTickets:
+		return m.clearedtickets
+	}
 	return false
 }
 
 // ClearEdge clears the value of the edge with the given name. It returns an error
 // if that edge is not defined in the schema.
 func (m *CustomerMutation) ClearEdge(name string) error {
+	switch name {
+	}
 	return fmt.Errorf("unknown Customer unique edge %s", name)
 }
 
 // ResetEdge resets all changes to the edge with the given name in this mutation.
 // It returns an error if the edge is not defined in the schema.
 func (m *CustomerMutation) ResetEdge(name string) error {
+	switch name {
+	case customer.EdgeTickets:
+		m.ResetTickets()
+		return nil
+	}
 	return fmt.Errorf("unknown Customer edge %s", name)
 }
 
 // DepartmentMutation represents an operation that mutates the Department nodes in the graph.
 type DepartmentMutation struct {
 	config
-	op            Op
-	typ           string
-	id            *int
-	clearedFields map[string]struct{}
-	expert        map[int]struct{}
-	removedexpert map[int]struct{}
-	clearedexpert bool
-	done          bool
-	oldValue      func(context.Context) (*Department, error)
-	predicates    []predicate.Department
+	op             Op
+	typ            string
+	id             *int
+	clearedFields  map[string]struct{}
+	expert         map[int]struct{}
+	removedexpert  map[int]struct{}
+	clearedexpert  bool
+	tickets        map[int64]struct{}
+	removedtickets map[int64]struct{}
+	clearedtickets bool
+	done           bool
+	oldValue       func(context.Context) (*Department, error)
+	predicates     []predicate.Department
 }
 
 var _ ent.Mutation = (*DepartmentMutation)(nil)
@@ -462,6 +560,60 @@ func (m *DepartmentMutation) ResetExpert() {
 	m.removedexpert = nil
 }
 
+// AddTicketIDs adds the "tickets" edge to the Ticket entity by ids.
+func (m *DepartmentMutation) AddTicketIDs(ids ...int64) {
+	if m.tickets == nil {
+		m.tickets = make(map[int64]struct{})
+	}
+	for i := range ids {
+		m.tickets[ids[i]] = struct{}{}
+	}
+}
+
+// ClearTickets clears the "tickets" edge to the Ticket entity.
+func (m *DepartmentMutation) ClearTickets() {
+	m.clearedtickets = true
+}
+
+// TicketsCleared reports if the "tickets" edge to the Ticket entity was cleared.
+func (m *DepartmentMutation) TicketsCleared() bool {
+	return m.clearedtickets
+}
+
+// RemoveTicketIDs removes the "tickets" edge to the Ticket entity by IDs.
+func (m *DepartmentMutation) RemoveTicketIDs(ids ...int64) {
+	if m.removedtickets == nil {
+		m.removedtickets = make(map[int64]struct{})
+	}
+	for i := range ids {
+		delete(m.tickets, ids[i])
+		m.removedtickets[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedTickets returns the removed IDs of the "tickets" edge to the Ticket entity.
+func (m *DepartmentMutation) RemovedTicketsIDs() (ids []int64) {
+	for id := range m.removedtickets {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// TicketsIDs returns the "tickets" edge IDs in the mutation.
+func (m *DepartmentMutation) TicketsIDs() (ids []int64) {
+	for id := range m.tickets {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetTickets resets all changes to the "tickets" edge.
+func (m *DepartmentMutation) ResetTickets() {
+	m.tickets = nil
+	m.clearedtickets = false
+	m.removedtickets = nil
+}
+
 // Where appends a list predicates to the DepartmentMutation builder.
 func (m *DepartmentMutation) Where(ps ...predicate.Department) {
 	m.predicates = append(m.predicates, ps...)
@@ -570,9 +722,12 @@ func (m *DepartmentMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *DepartmentMutation) AddedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.expert != nil {
 		edges = append(edges, department.EdgeExpert)
+	}
+	if m.tickets != nil {
+		edges = append(edges, department.EdgeTickets)
 	}
 	return edges
 }
@@ -587,15 +742,24 @@ func (m *DepartmentMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case department.EdgeTickets:
+		ids := make([]ent.Value, 0, len(m.tickets))
+		for id := range m.tickets {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *DepartmentMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.removedexpert != nil {
 		edges = append(edges, department.EdgeExpert)
+	}
+	if m.removedtickets != nil {
+		edges = append(edges, department.EdgeTickets)
 	}
 	return edges
 }
@@ -610,15 +774,24 @@ func (m *DepartmentMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case department.EdgeTickets:
+		ids := make([]ent.Value, 0, len(m.removedtickets))
+		for id := range m.removedtickets {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *DepartmentMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.clearedexpert {
 		edges = append(edges, department.EdgeExpert)
+	}
+	if m.clearedtickets {
+		edges = append(edges, department.EdgeTickets)
 	}
 	return edges
 }
@@ -629,6 +802,8 @@ func (m *DepartmentMutation) EdgeCleared(name string) bool {
 	switch name {
 	case department.EdgeExpert:
 		return m.clearedexpert
+	case department.EdgeTickets:
+		return m.clearedtickets
 	}
 	return false
 }
@@ -647,6 +822,9 @@ func (m *DepartmentMutation) ResetEdge(name string) error {
 	switch name {
 	case department.EdgeExpert:
 		m.ResetExpert()
+		return nil
+	case department.EdgeTickets:
+		m.ResetTickets()
 		return nil
 	}
 	return fmt.Errorf("unknown Department edge %s", name)
@@ -668,6 +846,9 @@ type ExpertMutation struct {
 	department        map[int]struct{}
 	removeddepartment map[int]struct{}
 	cleareddepartment bool
+	tickets           map[int64]struct{}
+	removedtickets    map[int64]struct{}
+	clearedtickets    bool
 	done              bool
 	oldValue          func(context.Context) (*Expert, error)
 	predicates        []predicate.Expert
@@ -1047,6 +1228,60 @@ func (m *ExpertMutation) ResetDepartment() {
 	m.removeddepartment = nil
 }
 
+// AddTicketIDs adds the "tickets" edge to the Ticket entity by ids.
+func (m *ExpertMutation) AddTicketIDs(ids ...int64) {
+	if m.tickets == nil {
+		m.tickets = make(map[int64]struct{})
+	}
+	for i := range ids {
+		m.tickets[ids[i]] = struct{}{}
+	}
+}
+
+// ClearTickets clears the "tickets" edge to the Ticket entity.
+func (m *ExpertMutation) ClearTickets() {
+	m.clearedtickets = true
+}
+
+// TicketsCleared reports if the "tickets" edge to the Ticket entity was cleared.
+func (m *ExpertMutation) TicketsCleared() bool {
+	return m.clearedtickets
+}
+
+// RemoveTicketIDs removes the "tickets" edge to the Ticket entity by IDs.
+func (m *ExpertMutation) RemoveTicketIDs(ids ...int64) {
+	if m.removedtickets == nil {
+		m.removedtickets = make(map[int64]struct{})
+	}
+	for i := range ids {
+		delete(m.tickets, ids[i])
+		m.removedtickets[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedTickets returns the removed IDs of the "tickets" edge to the Ticket entity.
+func (m *ExpertMutation) RemovedTicketsIDs() (ids []int64) {
+	for id := range m.removedtickets {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// TicketsIDs returns the "tickets" edge IDs in the mutation.
+func (m *ExpertMutation) TicketsIDs() (ids []int64) {
+	for id := range m.tickets {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetTickets resets all changes to the "tickets" edge.
+func (m *ExpertMutation) ResetTickets() {
+	m.tickets = nil
+	m.clearedtickets = false
+	m.removedtickets = nil
+}
+
 // Where appends a list predicates to the ExpertMutation builder.
 func (m *ExpertMutation) Where(ps ...predicate.Expert) {
 	m.predicates = append(m.predicates, ps...)
@@ -1265,9 +1500,12 @@ func (m *ExpertMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *ExpertMutation) AddedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.department != nil {
 		edges = append(edges, expert.EdgeDepartment)
+	}
+	if m.tickets != nil {
+		edges = append(edges, expert.EdgeTickets)
 	}
 	return edges
 }
@@ -1282,15 +1520,24 @@ func (m *ExpertMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case expert.EdgeTickets:
+		ids := make([]ent.Value, 0, len(m.tickets))
+		for id := range m.tickets {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *ExpertMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.removeddepartment != nil {
 		edges = append(edges, expert.EdgeDepartment)
+	}
+	if m.removedtickets != nil {
+		edges = append(edges, expert.EdgeTickets)
 	}
 	return edges
 }
@@ -1305,15 +1552,24 @@ func (m *ExpertMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case expert.EdgeTickets:
+		ids := make([]ent.Value, 0, len(m.removedtickets))
+		for id := range m.removedtickets {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *ExpertMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.cleareddepartment {
 		edges = append(edges, expert.EdgeDepartment)
+	}
+	if m.clearedtickets {
+		edges = append(edges, expert.EdgeTickets)
 	}
 	return edges
 }
@@ -1324,6 +1580,8 @@ func (m *ExpertMutation) EdgeCleared(name string) bool {
 	switch name {
 	case expert.EdgeDepartment:
 		return m.cleareddepartment
+	case expert.EdgeTickets:
+		return m.clearedtickets
 	}
 	return false
 }
@@ -1343,6 +1601,9 @@ func (m *ExpertMutation) ResetEdge(name string) error {
 	case expert.EdgeDepartment:
 		m.ResetDepartment()
 		return nil
+	case expert.EdgeTickets:
+		m.ResetTickets()
+		return nil
 	}
 	return fmt.Errorf("unknown Expert edge %s", name)
 }
@@ -1350,13 +1611,28 @@ func (m *ExpertMutation) ResetEdge(name string) error {
 // TicketMutation represents an operation that mutates the Ticket nodes in the graph.
 type TicketMutation struct {
 	config
-	op            Op
-	typ           string
-	id            *int
-	clearedFields map[string]struct{}
-	done          bool
-	oldValue      func(context.Context) (*Ticket, error)
-	predicates    []predicate.Ticket
+	op                   Op
+	typ                  string
+	id                   *int64
+	title                *string
+	content              *string
+	status               *int
+	addstatus            *int
+	ticket_file_id       *string
+	is_viewed            *bool
+	clearedFields        map[string]struct{}
+	customer_id          map[int]struct{}
+	removedcustomer_id   map[int]struct{}
+	clearedcustomer_id   bool
+	expert_id            map[int]struct{}
+	removedexpert_id     map[int]struct{}
+	clearedexpert_id     bool
+	department_id        map[int]struct{}
+	removeddepartment_id map[int]struct{}
+	cleareddepartment_id bool
+	done                 bool
+	oldValue             func(context.Context) (*Ticket, error)
+	predicates           []predicate.Ticket
 }
 
 var _ ent.Mutation = (*TicketMutation)(nil)
@@ -1379,7 +1655,7 @@ func newTicketMutation(c config, op Op, opts ...ticketOption) *TicketMutation {
 }
 
 // withTicketID sets the ID field of the mutation.
-func withTicketID(id int) ticketOption {
+func withTicketID(id int64) ticketOption {
 	return func(m *TicketMutation) {
 		var (
 			err   error
@@ -1429,9 +1705,15 @@ func (m TicketMutation) Tx() (*Tx, error) {
 	return tx, nil
 }
 
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of Ticket entities.
+func (m *TicketMutation) SetID(id int64) {
+	m.id = &id
+}
+
 // ID returns the ID value in the mutation. Note that the ID is only available
 // if it was provided to the builder or after it was returned from the database.
-func (m *TicketMutation) ID() (id int, exists bool) {
+func (m *TicketMutation) ID() (id int64, exists bool) {
 	if m.id == nil {
 		return
 	}
@@ -1442,12 +1724,12 @@ func (m *TicketMutation) ID() (id int, exists bool) {
 // That means, if the mutation is applied within a transaction with an isolation level such
 // as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
 // or updated by the mutation.
-func (m *TicketMutation) IDs(ctx context.Context) ([]int, error) {
+func (m *TicketMutation) IDs(ctx context.Context) ([]int64, error) {
 	switch {
 	case m.op.Is(OpUpdateOne | OpDeleteOne):
 		id, exists := m.ID()
 		if exists {
-			return []int{id}, nil
+			return []int64{id}, nil
 		}
 		fallthrough
 	case m.op.Is(OpUpdate | OpDelete):
@@ -1455,6 +1737,368 @@ func (m *TicketMutation) IDs(ctx context.Context) ([]int, error) {
 	default:
 		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
 	}
+}
+
+// SetTitle sets the "title" field.
+func (m *TicketMutation) SetTitle(s string) {
+	m.title = &s
+}
+
+// Title returns the value of the "title" field in the mutation.
+func (m *TicketMutation) Title() (r string, exists bool) {
+	v := m.title
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTitle returns the old "title" field's value of the Ticket entity.
+// If the Ticket object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TicketMutation) OldTitle(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTitle is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTitle requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTitle: %w", err)
+	}
+	return oldValue.Title, nil
+}
+
+// ResetTitle resets all changes to the "title" field.
+func (m *TicketMutation) ResetTitle() {
+	m.title = nil
+}
+
+// SetContent sets the "content" field.
+func (m *TicketMutation) SetContent(s string) {
+	m.content = &s
+}
+
+// Content returns the value of the "content" field in the mutation.
+func (m *TicketMutation) Content() (r string, exists bool) {
+	v := m.content
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldContent returns the old "content" field's value of the Ticket entity.
+// If the Ticket object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TicketMutation) OldContent(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldContent is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldContent requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldContent: %w", err)
+	}
+	return oldValue.Content, nil
+}
+
+// ResetContent resets all changes to the "content" field.
+func (m *TicketMutation) ResetContent() {
+	m.content = nil
+}
+
+// SetStatus sets the "status" field.
+func (m *TicketMutation) SetStatus(i int) {
+	m.status = &i
+	m.addstatus = nil
+}
+
+// Status returns the value of the "status" field in the mutation.
+func (m *TicketMutation) Status() (r int, exists bool) {
+	v := m.status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatus returns the old "status" field's value of the Ticket entity.
+// If the Ticket object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TicketMutation) OldStatus(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatus: %w", err)
+	}
+	return oldValue.Status, nil
+}
+
+// AddStatus adds i to the "status" field.
+func (m *TicketMutation) AddStatus(i int) {
+	if m.addstatus != nil {
+		*m.addstatus += i
+	} else {
+		m.addstatus = &i
+	}
+}
+
+// AddedStatus returns the value that was added to the "status" field in this mutation.
+func (m *TicketMutation) AddedStatus() (r int, exists bool) {
+	v := m.addstatus
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetStatus resets all changes to the "status" field.
+func (m *TicketMutation) ResetStatus() {
+	m.status = nil
+	m.addstatus = nil
+}
+
+// SetTicketFileID sets the "ticket_file_id" field.
+func (m *TicketMutation) SetTicketFileID(s string) {
+	m.ticket_file_id = &s
+}
+
+// TicketFileID returns the value of the "ticket_file_id" field in the mutation.
+func (m *TicketMutation) TicketFileID() (r string, exists bool) {
+	v := m.ticket_file_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTicketFileID returns the old "ticket_file_id" field's value of the Ticket entity.
+// If the Ticket object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TicketMutation) OldTicketFileID(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTicketFileID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTicketFileID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTicketFileID: %w", err)
+	}
+	return oldValue.TicketFileID, nil
+}
+
+// ResetTicketFileID resets all changes to the "ticket_file_id" field.
+func (m *TicketMutation) ResetTicketFileID() {
+	m.ticket_file_id = nil
+}
+
+// SetIsViewed sets the "is_viewed" field.
+func (m *TicketMutation) SetIsViewed(b bool) {
+	m.is_viewed = &b
+}
+
+// IsViewed returns the value of the "is_viewed" field in the mutation.
+func (m *TicketMutation) IsViewed() (r bool, exists bool) {
+	v := m.is_viewed
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldIsViewed returns the old "is_viewed" field's value of the Ticket entity.
+// If the Ticket object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *TicketMutation) OldIsViewed(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldIsViewed is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldIsViewed requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldIsViewed: %w", err)
+	}
+	return oldValue.IsViewed, nil
+}
+
+// ResetIsViewed resets all changes to the "is_viewed" field.
+func (m *TicketMutation) ResetIsViewed() {
+	m.is_viewed = nil
+}
+
+// AddCustomerIDIDs adds the "customer_id" edge to the Customer entity by ids.
+func (m *TicketMutation) AddCustomerIDIDs(ids ...int) {
+	if m.customer_id == nil {
+		m.customer_id = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.customer_id[ids[i]] = struct{}{}
+	}
+}
+
+// ClearCustomerID clears the "customer_id" edge to the Customer entity.
+func (m *TicketMutation) ClearCustomerID() {
+	m.clearedcustomer_id = true
+}
+
+// CustomerIDCleared reports if the "customer_id" edge to the Customer entity was cleared.
+func (m *TicketMutation) CustomerIDCleared() bool {
+	return m.clearedcustomer_id
+}
+
+// RemoveCustomerIDIDs removes the "customer_id" edge to the Customer entity by IDs.
+func (m *TicketMutation) RemoveCustomerIDIDs(ids ...int) {
+	if m.removedcustomer_id == nil {
+		m.removedcustomer_id = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.customer_id, ids[i])
+		m.removedcustomer_id[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedCustomerID returns the removed IDs of the "customer_id" edge to the Customer entity.
+func (m *TicketMutation) RemovedCustomerIDIDs() (ids []int) {
+	for id := range m.removedcustomer_id {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// CustomerIDIDs returns the "customer_id" edge IDs in the mutation.
+func (m *TicketMutation) CustomerIDIDs() (ids []int) {
+	for id := range m.customer_id {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetCustomerID resets all changes to the "customer_id" edge.
+func (m *TicketMutation) ResetCustomerID() {
+	m.customer_id = nil
+	m.clearedcustomer_id = false
+	m.removedcustomer_id = nil
+}
+
+// AddExpertIDIDs adds the "expert_id" edge to the Expert entity by ids.
+func (m *TicketMutation) AddExpertIDIDs(ids ...int) {
+	if m.expert_id == nil {
+		m.expert_id = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.expert_id[ids[i]] = struct{}{}
+	}
+}
+
+// ClearExpertID clears the "expert_id" edge to the Expert entity.
+func (m *TicketMutation) ClearExpertID() {
+	m.clearedexpert_id = true
+}
+
+// ExpertIDCleared reports if the "expert_id" edge to the Expert entity was cleared.
+func (m *TicketMutation) ExpertIDCleared() bool {
+	return m.clearedexpert_id
+}
+
+// RemoveExpertIDIDs removes the "expert_id" edge to the Expert entity by IDs.
+func (m *TicketMutation) RemoveExpertIDIDs(ids ...int) {
+	if m.removedexpert_id == nil {
+		m.removedexpert_id = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.expert_id, ids[i])
+		m.removedexpert_id[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedExpertID returns the removed IDs of the "expert_id" edge to the Expert entity.
+func (m *TicketMutation) RemovedExpertIDIDs() (ids []int) {
+	for id := range m.removedexpert_id {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ExpertIDIDs returns the "expert_id" edge IDs in the mutation.
+func (m *TicketMutation) ExpertIDIDs() (ids []int) {
+	for id := range m.expert_id {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetExpertID resets all changes to the "expert_id" edge.
+func (m *TicketMutation) ResetExpertID() {
+	m.expert_id = nil
+	m.clearedexpert_id = false
+	m.removedexpert_id = nil
+}
+
+// AddDepartmentIDIDs adds the "department_id" edge to the Department entity by ids.
+func (m *TicketMutation) AddDepartmentIDIDs(ids ...int) {
+	if m.department_id == nil {
+		m.department_id = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.department_id[ids[i]] = struct{}{}
+	}
+}
+
+// ClearDepartmentID clears the "department_id" edge to the Department entity.
+func (m *TicketMutation) ClearDepartmentID() {
+	m.cleareddepartment_id = true
+}
+
+// DepartmentIDCleared reports if the "department_id" edge to the Department entity was cleared.
+func (m *TicketMutation) DepartmentIDCleared() bool {
+	return m.cleareddepartment_id
+}
+
+// RemoveDepartmentIDIDs removes the "department_id" edge to the Department entity by IDs.
+func (m *TicketMutation) RemoveDepartmentIDIDs(ids ...int) {
+	if m.removeddepartment_id == nil {
+		m.removeddepartment_id = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.department_id, ids[i])
+		m.removeddepartment_id[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedDepartmentID returns the removed IDs of the "department_id" edge to the Department entity.
+func (m *TicketMutation) RemovedDepartmentIDIDs() (ids []int) {
+	for id := range m.removeddepartment_id {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// DepartmentIDIDs returns the "department_id" edge IDs in the mutation.
+func (m *TicketMutation) DepartmentIDIDs() (ids []int) {
+	for id := range m.department_id {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetDepartmentID resets all changes to the "department_id" edge.
+func (m *TicketMutation) ResetDepartmentID() {
+	m.department_id = nil
+	m.cleareddepartment_id = false
+	m.removeddepartment_id = nil
 }
 
 // Where appends a list predicates to the TicketMutation builder.
@@ -1491,7 +2135,22 @@ func (m *TicketMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *TicketMutation) Fields() []string {
-	fields := make([]string, 0, 0)
+	fields := make([]string, 0, 5)
+	if m.title != nil {
+		fields = append(fields, ticket.FieldTitle)
+	}
+	if m.content != nil {
+		fields = append(fields, ticket.FieldContent)
+	}
+	if m.status != nil {
+		fields = append(fields, ticket.FieldStatus)
+	}
+	if m.ticket_file_id != nil {
+		fields = append(fields, ticket.FieldTicketFileID)
+	}
+	if m.is_viewed != nil {
+		fields = append(fields, ticket.FieldIsViewed)
+	}
 	return fields
 }
 
@@ -1499,6 +2158,18 @@ func (m *TicketMutation) Fields() []string {
 // return value indicates that this field was not set, or was not defined in the
 // schema.
 func (m *TicketMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case ticket.FieldTitle:
+		return m.Title()
+	case ticket.FieldContent:
+		return m.Content()
+	case ticket.FieldStatus:
+		return m.Status()
+	case ticket.FieldTicketFileID:
+		return m.TicketFileID()
+	case ticket.FieldIsViewed:
+		return m.IsViewed()
+	}
 	return nil, false
 }
 
@@ -1506,6 +2177,18 @@ func (m *TicketMutation) Field(name string) (ent.Value, bool) {
 // returned if the mutation operation is not UpdateOne, or the query to the
 // database failed.
 func (m *TicketMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case ticket.FieldTitle:
+		return m.OldTitle(ctx)
+	case ticket.FieldContent:
+		return m.OldContent(ctx)
+	case ticket.FieldStatus:
+		return m.OldStatus(ctx)
+	case ticket.FieldTicketFileID:
+		return m.OldTicketFileID(ctx)
+	case ticket.FieldIsViewed:
+		return m.OldIsViewed(ctx)
+	}
 	return nil, fmt.Errorf("unknown Ticket field %s", name)
 }
 
@@ -1514,6 +2197,41 @@ func (m *TicketMutation) OldField(ctx context.Context, name string) (ent.Value, 
 // type.
 func (m *TicketMutation) SetField(name string, value ent.Value) error {
 	switch name {
+	case ticket.FieldTitle:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTitle(v)
+		return nil
+	case ticket.FieldContent:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetContent(v)
+		return nil
+	case ticket.FieldStatus:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatus(v)
+		return nil
+	case ticket.FieldTicketFileID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTicketFileID(v)
+		return nil
+	case ticket.FieldIsViewed:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetIsViewed(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Ticket field %s", name)
 }
@@ -1521,13 +2239,21 @@ func (m *TicketMutation) SetField(name string, value ent.Value) error {
 // AddedFields returns all numeric fields that were incremented/decremented during
 // this mutation.
 func (m *TicketMutation) AddedFields() []string {
-	return nil
+	var fields []string
+	if m.addstatus != nil {
+		fields = append(fields, ticket.FieldStatus)
+	}
+	return fields
 }
 
 // AddedField returns the numeric value that was incremented/decremented on a field
 // with the given name. The second boolean return value indicates that this field
 // was not set, or was not defined in the schema.
 func (m *TicketMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case ticket.FieldStatus:
+		return m.AddedStatus()
+	}
 	return nil, false
 }
 
@@ -1535,6 +2261,15 @@ func (m *TicketMutation) AddedField(name string) (ent.Value, bool) {
 // the field is not defined in the schema, or if the type mismatched the field
 // type.
 func (m *TicketMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case ticket.FieldStatus:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddStatus(v)
+		return nil
+	}
 	return fmt.Errorf("unknown Ticket numeric field %s", name)
 }
 
@@ -1560,53 +2295,158 @@ func (m *TicketMutation) ClearField(name string) error {
 // ResetField resets all changes in the mutation for the field with the given name.
 // It returns an error if the field is not defined in the schema.
 func (m *TicketMutation) ResetField(name string) error {
+	switch name {
+	case ticket.FieldTitle:
+		m.ResetTitle()
+		return nil
+	case ticket.FieldContent:
+		m.ResetContent()
+		return nil
+	case ticket.FieldStatus:
+		m.ResetStatus()
+		return nil
+	case ticket.FieldTicketFileID:
+		m.ResetTicketFileID()
+		return nil
+	case ticket.FieldIsViewed:
+		m.ResetIsViewed()
+		return nil
+	}
 	return fmt.Errorf("unknown Ticket field %s", name)
 }
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *TicketMutation) AddedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 3)
+	if m.customer_id != nil {
+		edges = append(edges, ticket.EdgeCustomerID)
+	}
+	if m.expert_id != nil {
+		edges = append(edges, ticket.EdgeExpertID)
+	}
+	if m.department_id != nil {
+		edges = append(edges, ticket.EdgeDepartmentID)
+	}
 	return edges
 }
 
 // AddedIDs returns all IDs (to other nodes) that were added for the given edge
 // name in this mutation.
 func (m *TicketMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case ticket.EdgeCustomerID:
+		ids := make([]ent.Value, 0, len(m.customer_id))
+		for id := range m.customer_id {
+			ids = append(ids, id)
+		}
+		return ids
+	case ticket.EdgeExpertID:
+		ids := make([]ent.Value, 0, len(m.expert_id))
+		for id := range m.expert_id {
+			ids = append(ids, id)
+		}
+		return ids
+	case ticket.EdgeDepartmentID:
+		ids := make([]ent.Value, 0, len(m.department_id))
+		for id := range m.department_id {
+			ids = append(ids, id)
+		}
+		return ids
+	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *TicketMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 3)
+	if m.removedcustomer_id != nil {
+		edges = append(edges, ticket.EdgeCustomerID)
+	}
+	if m.removedexpert_id != nil {
+		edges = append(edges, ticket.EdgeExpertID)
+	}
+	if m.removeddepartment_id != nil {
+		edges = append(edges, ticket.EdgeDepartmentID)
+	}
 	return edges
 }
 
 // RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
 // the given name in this mutation.
 func (m *TicketMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case ticket.EdgeCustomerID:
+		ids := make([]ent.Value, 0, len(m.removedcustomer_id))
+		for id := range m.removedcustomer_id {
+			ids = append(ids, id)
+		}
+		return ids
+	case ticket.EdgeExpertID:
+		ids := make([]ent.Value, 0, len(m.removedexpert_id))
+		for id := range m.removedexpert_id {
+			ids = append(ids, id)
+		}
+		return ids
+	case ticket.EdgeDepartmentID:
+		ids := make([]ent.Value, 0, len(m.removeddepartment_id))
+		for id := range m.removeddepartment_id {
+			ids = append(ids, id)
+		}
+		return ids
+	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *TicketMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 0)
+	edges := make([]string, 0, 3)
+	if m.clearedcustomer_id {
+		edges = append(edges, ticket.EdgeCustomerID)
+	}
+	if m.clearedexpert_id {
+		edges = append(edges, ticket.EdgeExpertID)
+	}
+	if m.cleareddepartment_id {
+		edges = append(edges, ticket.EdgeDepartmentID)
+	}
 	return edges
 }
 
 // EdgeCleared returns a boolean which indicates if the edge with the given name
 // was cleared in this mutation.
 func (m *TicketMutation) EdgeCleared(name string) bool {
+	switch name {
+	case ticket.EdgeCustomerID:
+		return m.clearedcustomer_id
+	case ticket.EdgeExpertID:
+		return m.clearedexpert_id
+	case ticket.EdgeDepartmentID:
+		return m.cleareddepartment_id
+	}
 	return false
 }
 
 // ClearEdge clears the value of the edge with the given name. It returns an error
 // if that edge is not defined in the schema.
 func (m *TicketMutation) ClearEdge(name string) error {
+	switch name {
+	}
 	return fmt.Errorf("unknown Ticket unique edge %s", name)
 }
 
 // ResetEdge resets all changes to the edge with the given name in this mutation.
 // It returns an error if the edge is not defined in the schema.
 func (m *TicketMutation) ResetEdge(name string) error {
+	switch name {
+	case ticket.EdgeCustomerID:
+		m.ResetCustomerID()
+		return nil
+	case ticket.EdgeExpertID:
+		m.ResetExpertID()
+		return nil
+	case ticket.EdgeDepartmentID:
+		m.ResetDepartmentID()
+		return nil
+	}
 	return fmt.Errorf("unknown Ticket edge %s", name)
 }

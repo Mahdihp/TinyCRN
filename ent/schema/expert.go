@@ -29,5 +29,6 @@ func (Expert) Fields() []ent.Field {
 func (Expert) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.To("department", Department.Type),
+		edge.To("tickets", Ticket.Type),
 	}
 }

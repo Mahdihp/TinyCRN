@@ -336,6 +336,22 @@ func (c *CustomerClient) GetX(ctx context.Context, id int) *Customer {
 	return obj
 }
 
+// QueryTickets queries the tickets edge of a Customer.
+func (c *CustomerClient) QueryTickets(cu *Customer) *TicketQuery {
+	query := (&TicketClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := cu.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(customer.Table, customer.FieldID, id),
+			sqlgraph.To(ticket.Table, ticket.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, customer.TicketsTable, customer.TicketsPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(cu.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *CustomerClient) Hooks() []Hook {
 	return c.hooks.Customer
@@ -478,6 +494,22 @@ func (c *DepartmentClient) QueryExpert(d *Department) *ExpertQuery {
 			sqlgraph.From(department.Table, department.FieldID, id),
 			sqlgraph.To(expert.Table, expert.FieldID),
 			sqlgraph.Edge(sqlgraph.M2M, true, department.ExpertTable, department.ExpertPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(d.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryTickets queries the tickets edge of a Department.
+func (c *DepartmentClient) QueryTickets(d *Department) *TicketQuery {
+	query := (&TicketClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := d.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(department.Table, department.FieldID, id),
+			sqlgraph.To(ticket.Table, ticket.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, department.TicketsTable, department.TicketsPrimaryKey...),
 		)
 		fromV = sqlgraph.Neighbors(d.driver.Dialect(), step)
 		return fromV, nil
@@ -634,6 +666,22 @@ func (c *ExpertClient) QueryDepartment(e *Expert) *DepartmentQuery {
 	return query
 }
 
+// QueryTickets queries the tickets edge of a Expert.
+func (c *ExpertClient) QueryTickets(e *Expert) *TicketQuery {
+	query := (&TicketClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := e.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(expert.Table, expert.FieldID, id),
+			sqlgraph.To(ticket.Table, ticket.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, false, expert.TicketsTable, expert.TicketsPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(e.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *ExpertClient) Hooks() []Hook {
 	return c.hooks.Expert
@@ -720,7 +768,7 @@ func (c *TicketClient) UpdateOne(t *Ticket) *TicketUpdateOne {
 }
 
 // UpdateOneID returns an update builder for the given id.
-func (c *TicketClient) UpdateOneID(id int) *TicketUpdateOne {
+func (c *TicketClient) UpdateOneID(id int64) *TicketUpdateOne {
 	mutation := newTicketMutation(c.config, OpUpdateOne, withTicketID(id))
 	return &TicketUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
@@ -737,7 +785,7 @@ func (c *TicketClient) DeleteOne(t *Ticket) *TicketDeleteOne {
 }
 
 // DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *TicketClient) DeleteOneID(id int) *TicketDeleteOne {
+func (c *TicketClient) DeleteOneID(id int64) *TicketDeleteOne {
 	builder := c.Delete().Where(ticket.ID(id))
 	builder.mutation.id = &id
 	builder.mutation.op = OpDeleteOne
@@ -754,17 +802,65 @@ func (c *TicketClient) Query() *TicketQuery {
 }
 
 // Get returns a Ticket entity by its id.
-func (c *TicketClient) Get(ctx context.Context, id int) (*Ticket, error) {
+func (c *TicketClient) Get(ctx context.Context, id int64) (*Ticket, error) {
 	return c.Query().Where(ticket.ID(id)).Only(ctx)
 }
 
 // GetX is like Get, but panics if an error occurs.
-func (c *TicketClient) GetX(ctx context.Context, id int) *Ticket {
+func (c *TicketClient) GetX(ctx context.Context, id int64) *Ticket {
 	obj, err := c.Get(ctx, id)
 	if err != nil {
 		panic(err)
 	}
 	return obj
+}
+
+// QueryCustomerID queries the customer_id edge of a Ticket.
+func (c *TicketClient) QueryCustomerID(t *Ticket) *CustomerQuery {
+	query := (&CustomerClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := t.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(ticket.Table, ticket.FieldID, id),
+			sqlgraph.To(customer.Table, customer.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, ticket.CustomerIDTable, ticket.CustomerIDPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(t.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryExpertID queries the expert_id edge of a Ticket.
+func (c *TicketClient) QueryExpertID(t *Ticket) *ExpertQuery {
+	query := (&ExpertClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := t.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(ticket.Table, ticket.FieldID, id),
+			sqlgraph.To(expert.Table, expert.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, ticket.ExpertIDTable, ticket.ExpertIDPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(t.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryDepartmentID queries the department_id edge of a Ticket.
+func (c *TicketClient) QueryDepartmentID(t *Ticket) *DepartmentQuery {
+	query := (&DepartmentClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := t.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(ticket.Table, ticket.FieldID, id),
+			sqlgraph.To(department.Table, department.FieldID),
+			sqlgraph.Edge(sqlgraph.M2M, true, ticket.DepartmentIDTable, ticket.DepartmentIDPrimaryKey...),
+		)
+		fromV = sqlgraph.Neighbors(t.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
 }
 
 // Hooks returns the client hooks.

@@ -5,6 +5,7 @@ package ent
 import (
 	"TinyCRM/ent/department"
 	"TinyCRM/ent/expert"
+	"TinyCRM/ent/ticket"
 	"context"
 	"errors"
 	"fmt"
@@ -92,6 +93,21 @@ func (ec *ExpertCreate) AddDepartment(d ...*Department) *ExpertCreate {
 		ids[i] = d[i].ID
 	}
 	return ec.AddDepartmentIDs(ids...)
+}
+
+// AddTicketIDs adds the "tickets" edge to the Ticket entity by IDs.
+func (ec *ExpertCreate) AddTicketIDs(ids ...int64) *ExpertCreate {
+	ec.mutation.AddTicketIDs(ids...)
+	return ec
+}
+
+// AddTickets adds the "tickets" edges to the Ticket entity.
+func (ec *ExpertCreate) AddTickets(t ...*Ticket) *ExpertCreate {
+	ids := make([]int64, len(t))
+	for i := range t {
+		ids[i] = t[i].ID
+	}
+	return ec.AddTicketIDs(ids...)
 }
 
 // Mutation returns the ExpertMutation object of the builder.
@@ -239,6 +255,22 @@ func (ec *ExpertCreate) createSpec() (*Expert, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(department.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := ec.mutation.TicketsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2M,
+			Inverse: false,
+			Table:   expert.TicketsTable,
+			Columns: expert.TicketsPrimaryKey,
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(ticket.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {

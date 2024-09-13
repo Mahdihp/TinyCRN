@@ -28,6 +28,8 @@ const (
 	FieldIsOnline = "is_online"
 	// EdgeDepartment holds the string denoting the department edge name in mutations.
 	EdgeDepartment = "department"
+	// EdgeTickets holds the string denoting the tickets edge name in mutations.
+	EdgeTickets = "tickets"
 	// Table holds the table name of the expert in the database.
 	Table = "experts"
 	// DepartmentTable is the table that holds the department relation/edge. The primary key declared below.
@@ -35,6 +37,11 @@ const (
 	// DepartmentInverseTable is the table name for the Department entity.
 	// It exists in this package in order to avoid circular dependency with the "department" package.
 	DepartmentInverseTable = "departments"
+	// TicketsTable is the table that holds the tickets relation/edge. The primary key declared below.
+	TicketsTable = "expert_tickets"
+	// TicketsInverseTable is the table name for the Ticket entity.
+	// It exists in this package in order to avoid circular dependency with the "ticket" package.
+	TicketsInverseTable = "tickets"
 )
 
 // Columns holds all SQL columns for expert fields.
@@ -52,6 +59,9 @@ var (
 	// DepartmentPrimaryKey and DepartmentColumn2 are the table columns denoting the
 	// primary key for the department relation (M2M).
 	DepartmentPrimaryKey = []string{"expert_id", "department_id"}
+	// TicketsPrimaryKey and TicketsColumn2 are the table columns denoting the
+	// primary key for the tickets relation (M2M).
+	TicketsPrimaryKey = []string{"expert_id", "ticket_id"}
 )
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -128,10 +138,31 @@ func ByDepartment(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newDepartmentStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByTicketsCount orders the results by tickets count.
+func ByTicketsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newTicketsStep(), opts...)
+	}
+}
+
+// ByTickets orders the results by tickets terms.
+func ByTickets(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newTicketsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newDepartmentStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(DepartmentInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2M, false, DepartmentTable, DepartmentPrimaryKey...),
+	)
+}
+func newTicketsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(TicketsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, false, TicketsTable, TicketsPrimaryKey...),
 	)
 }
