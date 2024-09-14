@@ -26,22 +26,26 @@ const (
 	FieldEndTime = "end_time"
 	// FieldIsOnline holds the string denoting the is_online field in the database.
 	FieldIsOnline = "is_online"
-	// EdgeDepartment holds the string denoting the department edge name in mutations.
-	EdgeDepartment = "department"
+	// FieldCreatedAt holds the string denoting the created_at field in the database.
+	FieldCreatedAt = "created_at"
+	// EdgeDepartments holds the string denoting the departments edge name in mutations.
+	EdgeDepartments = "departments"
 	// EdgeTickets holds the string denoting the tickets edge name in mutations.
 	EdgeTickets = "tickets"
 	// Table holds the table name of the expert in the database.
 	Table = "experts"
-	// DepartmentTable is the table that holds the department relation/edge. The primary key declared below.
-	DepartmentTable = "expert_department"
-	// DepartmentInverseTable is the table name for the Department entity.
+	// DepartmentsTable is the table that holds the departments relation/edge. The primary key declared below.
+	DepartmentsTable = "department_experts"
+	// DepartmentsInverseTable is the table name for the Department entity.
 	// It exists in this package in order to avoid circular dependency with the "department" package.
-	DepartmentInverseTable = "departments"
-	// TicketsTable is the table that holds the tickets relation/edge. The primary key declared below.
-	TicketsTable = "expert_tickets"
+	DepartmentsInverseTable = "departments"
+	// TicketsTable is the table that holds the tickets relation/edge.
+	TicketsTable = "tickets"
 	// TicketsInverseTable is the table name for the Ticket entity.
 	// It exists in this package in order to avoid circular dependency with the "ticket" package.
 	TicketsInverseTable = "tickets"
+	// TicketsColumn is the table column denoting the tickets relation/edge.
+	TicketsColumn = "expert_tickets"
 )
 
 // Columns holds all SQL columns for expert fields.
@@ -53,15 +57,13 @@ var Columns = []string{
 	FieldStartTime,
 	FieldEndTime,
 	FieldIsOnline,
+	FieldCreatedAt,
 }
 
 var (
-	// DepartmentPrimaryKey and DepartmentColumn2 are the table columns denoting the
-	// primary key for the department relation (M2M).
-	DepartmentPrimaryKey = []string{"expert_id", "department_id"}
-	// TicketsPrimaryKey and TicketsColumn2 are the table columns denoting the
-	// primary key for the tickets relation (M2M).
-	TicketsPrimaryKey = []string{"expert_id", "ticket_id"}
+	// DepartmentsPrimaryKey and DepartmentsColumn2 are the table columns denoting the
+	// primary key for the departments relation (M2M).
+	DepartmentsPrimaryKey = []string{"department_id", "expert_id"}
 )
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -85,6 +87,8 @@ var (
 	DefaultStartTime func() time.Time
 	// DefaultEndTime holds the default value on creation for the "end_time" field.
 	DefaultEndTime func() time.Time
+	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
+	DefaultCreatedAt func() time.Time
 )
 
 // OrderOption defines the ordering options for the Expert queries.
@@ -125,17 +129,22 @@ func ByIsOnline(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldIsOnline, opts...).ToFunc()
 }
 
-// ByDepartmentCount orders the results by department count.
-func ByDepartmentCount(opts ...sql.OrderTermOption) OrderOption {
+// ByCreatedAt orders the results by the created_at field.
+func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
+}
+
+// ByDepartmentsCount orders the results by departments count.
+func ByDepartmentsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborsCount(s, newDepartmentStep(), opts...)
+		sqlgraph.OrderByNeighborsCount(s, newDepartmentsStep(), opts...)
 	}
 }
 
-// ByDepartment orders the results by department terms.
-func ByDepartment(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+// ByDepartments orders the results by departments terms.
+func ByDepartments(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newDepartmentStep(), append([]sql.OrderTerm{term}, terms...)...)
+		sqlgraph.OrderByNeighborTerms(s, newDepartmentsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
 
@@ -152,17 +161,17 @@ func ByTickets(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newTicketsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
-func newDepartmentStep() *sqlgraph.Step {
+func newDepartmentsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(DepartmentInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.M2M, false, DepartmentTable, DepartmentPrimaryKey...),
+		sqlgraph.To(DepartmentsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2M, true, DepartmentsTable, DepartmentsPrimaryKey...),
 	)
 }
 func newTicketsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(TicketsInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.M2M, false, TicketsTable, TicketsPrimaryKey...),
+		sqlgraph.Edge(sqlgraph.O2M, false, TicketsTable, TicketsColumn),
 	)
 }

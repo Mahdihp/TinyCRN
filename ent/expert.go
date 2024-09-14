@@ -29,6 +29,8 @@ type Expert struct {
 	EndTime time.Time `json:"end_time,omitempty"`
 	// IsOnline holds the value of the "is_online" field.
 	IsOnline bool `json:"is_online,omitempty"`
+	// CreatedAt holds the value of the "created_at" field.
+	CreatedAt time.Time `json:"created_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the ExpertQuery when eager-loading is set.
 	Edges        ExpertEdges `json:"edges"`
@@ -37,8 +39,8 @@ type Expert struct {
 
 // ExpertEdges holds the relations/edges for other nodes in the graph.
 type ExpertEdges struct {
-	// Department holds the value of the department edge.
-	Department []*Department `json:"department,omitempty"`
+	// Departments holds the value of the departments edge.
+	Departments []*Department `json:"departments,omitempty"`
 	// Tickets holds the value of the tickets edge.
 	Tickets []*Ticket `json:"tickets,omitempty"`
 	// loadedTypes holds the information for reporting if a
@@ -46,13 +48,13 @@ type ExpertEdges struct {
 	loadedTypes [2]bool
 }
 
-// DepartmentOrErr returns the Department value or an error if the edge
+// DepartmentsOrErr returns the Departments value or an error if the edge
 // was not loaded in eager-loading.
-func (e ExpertEdges) DepartmentOrErr() ([]*Department, error) {
+func (e ExpertEdges) DepartmentsOrErr() ([]*Department, error) {
 	if e.loadedTypes[0] {
-		return e.Department, nil
+		return e.Departments, nil
 	}
-	return nil, &NotLoadedError{edge: "department"}
+	return nil, &NotLoadedError{edge: "departments"}
 }
 
 // TicketsOrErr returns the Tickets value or an error if the edge
@@ -75,7 +77,7 @@ func (*Expert) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullInt64)
 		case expert.FieldUsername, expert.FieldFirstName, expert.FieldLastName:
 			values[i] = new(sql.NullString)
-		case expert.FieldStartTime, expert.FieldEndTime:
+		case expert.FieldStartTime, expert.FieldEndTime, expert.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -134,6 +136,12 @@ func (e *Expert) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				e.IsOnline = value.Bool
 			}
+		case expert.FieldCreatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field created_at", values[i])
+			} else if value.Valid {
+				e.CreatedAt = value.Time
+			}
 		default:
 			e.selectValues.Set(columns[i], values[i])
 		}
@@ -147,9 +155,9 @@ func (e *Expert) Value(name string) (ent.Value, error) {
 	return e.selectValues.Get(name)
 }
 
-// QueryDepartment queries the "department" edge of the Expert entity.
-func (e *Expert) QueryDepartment() *DepartmentQuery {
-	return NewExpertClient(e.config).QueryDepartment(e)
+// QueryDepartments queries the "departments" edge of the Expert entity.
+func (e *Expert) QueryDepartments() *DepartmentQuery {
+	return NewExpertClient(e.config).QueryDepartments(e)
 }
 
 // QueryTickets queries the "tickets" edge of the Expert entity.
@@ -197,6 +205,9 @@ func (e *Expert) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("is_online=")
 	builder.WriteString(fmt.Sprintf("%v", e.IsOnline))
+	builder.WriteString(", ")
+	builder.WriteString("created_at=")
+	builder.WriteString(e.CreatedAt.Format(time.ANSIC))
 	builder.WriteByte(')')
 	return builder.String()
 }

@@ -21,12 +21,12 @@ import (
 // ExpertQuery is the builder for querying Expert entities.
 type ExpertQuery struct {
 	config
-	ctx            *QueryContext
-	order          []expert.OrderOption
-	inters         []Interceptor
-	predicates     []predicate.Expert
-	withDepartment *DepartmentQuery
-	withTickets    *TicketQuery
+	ctx             *QueryContext
+	order           []expert.OrderOption
+	inters          []Interceptor
+	predicates      []predicate.Expert
+	withDepartments *DepartmentQuery
+	withTickets     *TicketQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -63,8 +63,8 @@ func (eq *ExpertQuery) Order(o ...expert.OrderOption) *ExpertQuery {
 	return eq
 }
 
-// QueryDepartment chains the current query on the "department" edge.
-func (eq *ExpertQuery) QueryDepartment() *DepartmentQuery {
+// QueryDepartments chains the current query on the "departments" edge.
+func (eq *ExpertQuery) QueryDepartments() *DepartmentQuery {
 	query := (&DepartmentClient{config: eq.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := eq.prepareQuery(ctx); err != nil {
@@ -77,7 +77,7 @@ func (eq *ExpertQuery) QueryDepartment() *DepartmentQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(expert.Table, expert.FieldID, selector),
 			sqlgraph.To(department.Table, department.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, false, expert.DepartmentTable, expert.DepartmentPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.M2M, true, expert.DepartmentsTable, expert.DepartmentsPrimaryKey...),
 		)
 		fromU = sqlgraph.SetNeighbors(eq.driver.Dialect(), step)
 		return fromU, nil
@@ -99,7 +99,7 @@ func (eq *ExpertQuery) QueryTickets() *TicketQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(expert.Table, expert.FieldID, selector),
 			sqlgraph.To(ticket.Table, ticket.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, false, expert.TicketsTable, expert.TicketsPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.O2M, false, expert.TicketsTable, expert.TicketsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(eq.driver.Dialect(), step)
 		return fromU, nil
@@ -294,27 +294,27 @@ func (eq *ExpertQuery) Clone() *ExpertQuery {
 		return nil
 	}
 	return &ExpertQuery{
-		config:         eq.config,
-		ctx:            eq.ctx.Clone(),
-		order:          append([]expert.OrderOption{}, eq.order...),
-		inters:         append([]Interceptor{}, eq.inters...),
-		predicates:     append([]predicate.Expert{}, eq.predicates...),
-		withDepartment: eq.withDepartment.Clone(),
-		withTickets:    eq.withTickets.Clone(),
+		config:          eq.config,
+		ctx:             eq.ctx.Clone(),
+		order:           append([]expert.OrderOption{}, eq.order...),
+		inters:          append([]Interceptor{}, eq.inters...),
+		predicates:      append([]predicate.Expert{}, eq.predicates...),
+		withDepartments: eq.withDepartments.Clone(),
+		withTickets:     eq.withTickets.Clone(),
 		// clone intermediate query.
 		sql:  eq.sql.Clone(),
 		path: eq.path,
 	}
 }
 
-// WithDepartment tells the query-builder to eager-load the nodes that are connected to
-// the "department" edge. The optional arguments are used to configure the query builder of the edge.
-func (eq *ExpertQuery) WithDepartment(opts ...func(*DepartmentQuery)) *ExpertQuery {
+// WithDepartments tells the query-builder to eager-load the nodes that are connected to
+// the "departments" edge. The optional arguments are used to configure the query builder of the edge.
+func (eq *ExpertQuery) WithDepartments(opts ...func(*DepartmentQuery)) *ExpertQuery {
 	query := (&DepartmentClient{config: eq.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
-	eq.withDepartment = query
+	eq.withDepartments = query
 	return eq
 }
 
@@ -408,7 +408,7 @@ func (eq *ExpertQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Exper
 		nodes       = []*Expert{}
 		_spec       = eq.querySpec()
 		loadedTypes = [2]bool{
-			eq.withDepartment != nil,
+			eq.withDepartments != nil,
 			eq.withTickets != nil,
 		}
 	)
@@ -430,10 +430,10 @@ func (eq *ExpertQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Exper
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
-	if query := eq.withDepartment; query != nil {
-		if err := eq.loadDepartment(ctx, query, nodes,
-			func(n *Expert) { n.Edges.Department = []*Department{} },
-			func(n *Expert, e *Department) { n.Edges.Department = append(n.Edges.Department, e) }); err != nil {
+	if query := eq.withDepartments; query != nil {
+		if err := eq.loadDepartments(ctx, query, nodes,
+			func(n *Expert) { n.Edges.Departments = []*Department{} },
+			func(n *Expert, e *Department) { n.Edges.Departments = append(n.Edges.Departments, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -447,7 +447,7 @@ func (eq *ExpertQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Exper
 	return nodes, nil
 }
 
-func (eq *ExpertQuery) loadDepartment(ctx context.Context, query *DepartmentQuery, nodes []*Expert, init func(*Expert), assign func(*Expert, *Department)) error {
+func (eq *ExpertQuery) loadDepartments(ctx context.Context, query *DepartmentQuery, nodes []*Expert, init func(*Expert), assign func(*Expert, *Department)) error {
 	edgeIDs := make([]driver.Value, len(nodes))
 	byID := make(map[int]*Expert)
 	nids := make(map[int]map[*Expert]struct{})
@@ -459,11 +459,11 @@ func (eq *ExpertQuery) loadDepartment(ctx context.Context, query *DepartmentQuer
 		}
 	}
 	query.Where(func(s *sql.Selector) {
-		joinT := sql.Table(expert.DepartmentTable)
-		s.Join(joinT).On(s.C(department.FieldID), joinT.C(expert.DepartmentPrimaryKey[1]))
-		s.Where(sql.InValues(joinT.C(expert.DepartmentPrimaryKey[0]), edgeIDs...))
+		joinT := sql.Table(expert.DepartmentsTable)
+		s.Join(joinT).On(s.C(department.FieldID), joinT.C(expert.DepartmentsPrimaryKey[0]))
+		s.Where(sql.InValues(joinT.C(expert.DepartmentsPrimaryKey[1]), edgeIDs...))
 		columns := s.SelectedColumns()
-		s.Select(joinT.C(expert.DepartmentPrimaryKey[0]))
+		s.Select(joinT.C(expert.DepartmentsPrimaryKey[1]))
 		s.AppendSelect(columns...)
 		s.SetDistinct(false)
 	})
@@ -500,7 +500,7 @@ func (eq *ExpertQuery) loadDepartment(ctx context.Context, query *DepartmentQuer
 	for _, n := range neighbors {
 		nodes, ok := nids[n.ID]
 		if !ok {
-			return fmt.Errorf(`unexpected "department" node returned %v`, n.ID)
+			return fmt.Errorf(`unexpected "departments" node returned %v`, n.ID)
 		}
 		for kn := range nodes {
 			assign(kn, n)
@@ -509,63 +509,33 @@ func (eq *ExpertQuery) loadDepartment(ctx context.Context, query *DepartmentQuer
 	return nil
 }
 func (eq *ExpertQuery) loadTickets(ctx context.Context, query *TicketQuery, nodes []*Expert, init func(*Expert), assign func(*Expert, *Ticket)) error {
-	edgeIDs := make([]driver.Value, len(nodes))
-	byID := make(map[int]*Expert)
-	nids := make(map[int64]map[*Expert]struct{})
-	for i, node := range nodes {
-		edgeIDs[i] = node.ID
-		byID[node.ID] = node
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Expert)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
 		if init != nil {
-			init(node)
+			init(nodes[i])
 		}
 	}
-	query.Where(func(s *sql.Selector) {
-		joinT := sql.Table(expert.TicketsTable)
-		s.Join(joinT).On(s.C(ticket.FieldID), joinT.C(expert.TicketsPrimaryKey[1]))
-		s.Where(sql.InValues(joinT.C(expert.TicketsPrimaryKey[0]), edgeIDs...))
-		columns := s.SelectedColumns()
-		s.Select(joinT.C(expert.TicketsPrimaryKey[0]))
-		s.AppendSelect(columns...)
-		s.SetDistinct(false)
-	})
-	if err := query.prepareQuery(ctx); err != nil {
-		return err
-	}
-	qr := QuerierFunc(func(ctx context.Context, q Query) (Value, error) {
-		return query.sqlAll(ctx, func(_ context.Context, spec *sqlgraph.QuerySpec) {
-			assign := spec.Assign
-			values := spec.ScanValues
-			spec.ScanValues = func(columns []string) ([]any, error) {
-				values, err := values(columns[1:])
-				if err != nil {
-					return nil, err
-				}
-				return append([]any{new(sql.NullInt64)}, values...), nil
-			}
-			spec.Assign = func(columns []string, values []any) error {
-				outValue := int(values[0].(*sql.NullInt64).Int64)
-				inValue := values[1].(*sql.NullInt64).Int64
-				if nids[inValue] == nil {
-					nids[inValue] = map[*Expert]struct{}{byID[outValue]: {}}
-					return assign(columns[1:], values[1:])
-				}
-				nids[inValue][byID[outValue]] = struct{}{}
-				return nil
-			}
-		})
-	})
-	neighbors, err := withInterceptors[[]*Ticket](ctx, query, qr, query.inters)
+	query.withFKs = true
+	query.Where(predicate.Ticket(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(expert.TicketsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
 	if err != nil {
 		return err
 	}
 	for _, n := range neighbors {
-		nodes, ok := nids[n.ID]
+		fk := n.expert_tickets
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "expert_tickets" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
 		if !ok {
-			return fmt.Errorf(`unexpected "tickets" node returned %v`, n.ID)
+			return fmt.Errorf(`unexpected referenced foreign-key "expert_tickets" returned %v for node %v`, *fk, n.ID)
 		}
-		for kn := range nodes {
-			assign(kn, n)
-		}
+		assign(node, n)
 	}
 	return nil
 }

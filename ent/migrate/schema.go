@@ -10,23 +10,42 @@ import (
 var (
 	// CustomersColumns holds the columns for the "customers" table.
 	CustomersColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "username", Type: field.TypeString, Unique: true, Size: 20},
+		{Name: "first_name", Type: field.TypeString, Size: 50},
+		{Name: "last_name", Type: field.TypeString, Size: 50},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamp(6)"}},
 	}
 	// CustomersTable holds the schema information for the "customers" table.
 	CustomersTable = &schema.Table{
 		Name:       "customers",
 		Columns:    CustomersColumns,
 		PrimaryKey: []*schema.Column{CustomersColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "customer_id",
+				Unique:  true,
+				Columns: []*schema.Column{CustomersColumns[0]},
+			},
+		},
 	}
 	// DepartmentsColumns holds the columns for the "departments" table.
 	DepartmentsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "name", Type: field.TypeString, Size: 50},
 	}
 	// DepartmentsTable holds the schema information for the "departments" table.
 	DepartmentsTable = &schema.Table{
 		Name:       "departments",
 		Columns:    DepartmentsColumns,
 		PrimaryKey: []*schema.Column{DepartmentsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "department_id",
+				Unique:  true,
+				Columns: []*schema.Column{DepartmentsColumns[0]},
+			},
+		},
 	}
 	// ExpertsColumns holds the columns for the "experts" table.
 	ExpertsColumns = []*schema.Column{
@@ -37,124 +56,88 @@ var (
 		{Name: "start_time", Type: field.TypeTime},
 		{Name: "end_time", Type: field.TypeTime},
 		{Name: "is_online", Type: field.TypeBool},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamp(6)"}},
 	}
 	// ExpertsTable holds the schema information for the "experts" table.
 	ExpertsTable = &schema.Table{
 		Name:       "experts",
 		Columns:    ExpertsColumns,
 		PrimaryKey: []*schema.Column{ExpertsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "expert_id",
+				Unique:  true,
+				Columns: []*schema.Column{ExpertsColumns[0]},
+			},
+		},
 	}
 	// TicketsColumns holds the columns for the "tickets" table.
 	TicketsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt64, Increment: true},
 		{Name: "title", Type: field.TypeString, Size: 50},
-		{Name: "content", Type: field.TypeString, Size: 500},
-		{Name: "status", Type: field.TypeInt},
+		{Name: "content", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "text"}},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"Unknown", "Pending", "Referenced", "Answered", "Closed"}},
 		{Name: "ticket_file_id", Type: field.TypeString},
-		{Name: "is_viewed", Type: field.TypeBool},
+		{Name: "is_viewed", Type: field.TypeBool, Default: false},
+		{Name: "created_at", Type: field.TypeTime, SchemaType: map[string]string{"postgres": "timestamp(6)"}},
+		{Name: "customer_tickets", Type: field.TypeInt64},
+		{Name: "department_tickets", Type: field.TypeInt},
+		{Name: "expert_tickets", Type: field.TypeInt},
 	}
 	// TicketsTable holds the schema information for the "tickets" table.
 	TicketsTable = &schema.Table{
 		Name:       "tickets",
 		Columns:    TicketsColumns,
 		PrimaryKey: []*schema.Column{TicketsColumns[0]},
-	}
-	// CustomerTicketsColumns holds the columns for the "customer_tickets" table.
-	CustomerTicketsColumns = []*schema.Column{
-		{Name: "customer_id", Type: field.TypeInt},
-		{Name: "ticket_id", Type: field.TypeInt64},
-	}
-	// CustomerTicketsTable holds the schema information for the "customer_tickets" table.
-	CustomerTicketsTable = &schema.Table{
-		Name:       "customer_tickets",
-		Columns:    CustomerTicketsColumns,
-		PrimaryKey: []*schema.Column{CustomerTicketsColumns[0], CustomerTicketsColumns[1]},
 		ForeignKeys: []*schema.ForeignKey{
 			{
-				Symbol:     "customer_tickets_customer_id",
-				Columns:    []*schema.Column{CustomerTicketsColumns[0]},
+				Symbol:     "tickets_customers_tickets",
+				Columns:    []*schema.Column{TicketsColumns[7]},
 				RefColumns: []*schema.Column{CustomersColumns[0]},
-				OnDelete:   schema.Cascade,
+				OnDelete:   schema.NoAction,
 			},
 			{
-				Symbol:     "customer_tickets_ticket_id",
-				Columns:    []*schema.Column{CustomerTicketsColumns[1]},
-				RefColumns: []*schema.Column{TicketsColumns[0]},
-				OnDelete:   schema.Cascade,
+				Symbol:     "tickets_departments_tickets",
+				Columns:    []*schema.Column{TicketsColumns[8]},
+				RefColumns: []*schema.Column{DepartmentsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "tickets_experts_tickets",
+				Columns:    []*schema.Column{TicketsColumns[9]},
+				RefColumns: []*schema.Column{ExpertsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "ticket_id",
+				Unique:  true,
+				Columns: []*schema.Column{TicketsColumns[0]},
 			},
 		},
 	}
-	// DepartmentTicketsColumns holds the columns for the "department_tickets" table.
-	DepartmentTicketsColumns = []*schema.Column{
+	// DepartmentExpertsColumns holds the columns for the "department_experts" table.
+	DepartmentExpertsColumns = []*schema.Column{
 		{Name: "department_id", Type: field.TypeInt},
-		{Name: "ticket_id", Type: field.TypeInt64},
+		{Name: "expert_id", Type: field.TypeInt},
 	}
-	// DepartmentTicketsTable holds the schema information for the "department_tickets" table.
-	DepartmentTicketsTable = &schema.Table{
-		Name:       "department_tickets",
-		Columns:    DepartmentTicketsColumns,
-		PrimaryKey: []*schema.Column{DepartmentTicketsColumns[0], DepartmentTicketsColumns[1]},
+	// DepartmentExpertsTable holds the schema information for the "department_experts" table.
+	DepartmentExpertsTable = &schema.Table{
+		Name:       "department_experts",
+		Columns:    DepartmentExpertsColumns,
+		PrimaryKey: []*schema.Column{DepartmentExpertsColumns[0], DepartmentExpertsColumns[1]},
 		ForeignKeys: []*schema.ForeignKey{
 			{
-				Symbol:     "department_tickets_department_id",
-				Columns:    []*schema.Column{DepartmentTicketsColumns[0]},
+				Symbol:     "department_experts_department_id",
+				Columns:    []*schema.Column{DepartmentExpertsColumns[0]},
 				RefColumns: []*schema.Column{DepartmentsColumns[0]},
 				OnDelete:   schema.Cascade,
 			},
 			{
-				Symbol:     "department_tickets_ticket_id",
-				Columns:    []*schema.Column{DepartmentTicketsColumns[1]},
-				RefColumns: []*schema.Column{TicketsColumns[0]},
-				OnDelete:   schema.Cascade,
-			},
-		},
-	}
-	// ExpertDepartmentColumns holds the columns for the "expert_department" table.
-	ExpertDepartmentColumns = []*schema.Column{
-		{Name: "expert_id", Type: field.TypeInt},
-		{Name: "department_id", Type: field.TypeInt},
-	}
-	// ExpertDepartmentTable holds the schema information for the "expert_department" table.
-	ExpertDepartmentTable = &schema.Table{
-		Name:       "expert_department",
-		Columns:    ExpertDepartmentColumns,
-		PrimaryKey: []*schema.Column{ExpertDepartmentColumns[0], ExpertDepartmentColumns[1]},
-		ForeignKeys: []*schema.ForeignKey{
-			{
-				Symbol:     "expert_department_expert_id",
-				Columns:    []*schema.Column{ExpertDepartmentColumns[0]},
+				Symbol:     "department_experts_expert_id",
+				Columns:    []*schema.Column{DepartmentExpertsColumns[1]},
 				RefColumns: []*schema.Column{ExpertsColumns[0]},
-				OnDelete:   schema.Cascade,
-			},
-			{
-				Symbol:     "expert_department_department_id",
-				Columns:    []*schema.Column{ExpertDepartmentColumns[1]},
-				RefColumns: []*schema.Column{DepartmentsColumns[0]},
-				OnDelete:   schema.Cascade,
-			},
-		},
-	}
-	// ExpertTicketsColumns holds the columns for the "expert_tickets" table.
-	ExpertTicketsColumns = []*schema.Column{
-		{Name: "expert_id", Type: field.TypeInt},
-		{Name: "ticket_id", Type: field.TypeInt64},
-	}
-	// ExpertTicketsTable holds the schema information for the "expert_tickets" table.
-	ExpertTicketsTable = &schema.Table{
-		Name:       "expert_tickets",
-		Columns:    ExpertTicketsColumns,
-		PrimaryKey: []*schema.Column{ExpertTicketsColumns[0], ExpertTicketsColumns[1]},
-		ForeignKeys: []*schema.ForeignKey{
-			{
-				Symbol:     "expert_tickets_expert_id",
-				Columns:    []*schema.Column{ExpertTicketsColumns[0]},
-				RefColumns: []*schema.Column{ExpertsColumns[0]},
-				OnDelete:   schema.Cascade,
-			},
-			{
-				Symbol:     "expert_tickets_ticket_id",
-				Columns:    []*schema.Column{ExpertTicketsColumns[1]},
-				RefColumns: []*schema.Column{TicketsColumns[0]},
 				OnDelete:   schema.Cascade,
 			},
 		},
@@ -165,20 +148,14 @@ var (
 		DepartmentsTable,
 		ExpertsTable,
 		TicketsTable,
-		CustomerTicketsTable,
-		DepartmentTicketsTable,
-		ExpertDepartmentTable,
-		ExpertTicketsTable,
+		DepartmentExpertsTable,
 	}
 )
 
 func init() {
-	CustomerTicketsTable.ForeignKeys[0].RefTable = CustomersTable
-	CustomerTicketsTable.ForeignKeys[1].RefTable = TicketsTable
-	DepartmentTicketsTable.ForeignKeys[0].RefTable = DepartmentsTable
-	DepartmentTicketsTable.ForeignKeys[1].RefTable = TicketsTable
-	ExpertDepartmentTable.ForeignKeys[0].RefTable = ExpertsTable
-	ExpertDepartmentTable.ForeignKeys[1].RefTable = DepartmentsTable
-	ExpertTicketsTable.ForeignKeys[0].RefTable = ExpertsTable
-	ExpertTicketsTable.ForeignKeys[1].RefTable = TicketsTable
+	TicketsTable.ForeignKeys[0].RefTable = CustomersTable
+	TicketsTable.ForeignKeys[1].RefTable = DepartmentsTable
+	TicketsTable.ForeignKeys[2].RefTable = ExpertsTable
+	DepartmentExpertsTable.ForeignKeys[0].RefTable = DepartmentsTable
+	DepartmentExpertsTable.ForeignKeys[1].RefTable = ExpertsTable
 }

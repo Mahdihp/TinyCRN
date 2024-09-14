@@ -114,14 +114,14 @@ func (eu *ExpertUpdate) SetNillableIsOnline(b *bool) *ExpertUpdate {
 	return eu
 }
 
-// AddDepartmentIDs adds the "department" edge to the Department entity by IDs.
+// AddDepartmentIDs adds the "departments" edge to the Department entity by IDs.
 func (eu *ExpertUpdate) AddDepartmentIDs(ids ...int) *ExpertUpdate {
 	eu.mutation.AddDepartmentIDs(ids...)
 	return eu
 }
 
-// AddDepartment adds the "department" edges to the Department entity.
-func (eu *ExpertUpdate) AddDepartment(d ...*Department) *ExpertUpdate {
+// AddDepartments adds the "departments" edges to the Department entity.
+func (eu *ExpertUpdate) AddDepartments(d ...*Department) *ExpertUpdate {
 	ids := make([]int, len(d))
 	for i := range d {
 		ids[i] = d[i].ID
@@ -149,20 +149,20 @@ func (eu *ExpertUpdate) Mutation() *ExpertMutation {
 	return eu.mutation
 }
 
-// ClearDepartment clears all "department" edges to the Department entity.
-func (eu *ExpertUpdate) ClearDepartment() *ExpertUpdate {
-	eu.mutation.ClearDepartment()
+// ClearDepartments clears all "departments" edges to the Department entity.
+func (eu *ExpertUpdate) ClearDepartments() *ExpertUpdate {
+	eu.mutation.ClearDepartments()
 	return eu
 }
 
-// RemoveDepartmentIDs removes the "department" edge to Department entities by IDs.
+// RemoveDepartmentIDs removes the "departments" edge to Department entities by IDs.
 func (eu *ExpertUpdate) RemoveDepartmentIDs(ids ...int) *ExpertUpdate {
 	eu.mutation.RemoveDepartmentIDs(ids...)
 	return eu
 }
 
-// RemoveDepartment removes "department" edges to Department entities.
-func (eu *ExpertUpdate) RemoveDepartment(d ...*Department) *ExpertUpdate {
+// RemoveDepartments removes "departments" edges to Department entities.
+func (eu *ExpertUpdate) RemoveDepartments(d ...*Department) *ExpertUpdate {
 	ids := make([]int, len(d))
 	for i := range d {
 		ids[i] = d[i].ID
@@ -268,12 +268,12 @@ func (eu *ExpertUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	if value, ok := eu.mutation.IsOnline(); ok {
 		_spec.SetField(expert.FieldIsOnline, field.TypeBool, value)
 	}
-	if eu.mutation.DepartmentCleared() {
+	if eu.mutation.DepartmentsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
-			Inverse: false,
-			Table:   expert.DepartmentTable,
-			Columns: expert.DepartmentPrimaryKey,
+			Inverse: true,
+			Table:   expert.DepartmentsTable,
+			Columns: expert.DepartmentsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(department.FieldID, field.TypeInt),
@@ -281,12 +281,12 @@ func (eu *ExpertUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := eu.mutation.RemovedDepartmentIDs(); len(nodes) > 0 && !eu.mutation.DepartmentCleared() {
+	if nodes := eu.mutation.RemovedDepartmentsIDs(); len(nodes) > 0 && !eu.mutation.DepartmentsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
-			Inverse: false,
-			Table:   expert.DepartmentTable,
-			Columns: expert.DepartmentPrimaryKey,
+			Inverse: true,
+			Table:   expert.DepartmentsTable,
+			Columns: expert.DepartmentsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(department.FieldID, field.TypeInt),
@@ -297,12 +297,12 @@ func (eu *ExpertUpdate) sqlSave(ctx context.Context) (n int, err error) {
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := eu.mutation.DepartmentIDs(); len(nodes) > 0 {
+	if nodes := eu.mutation.DepartmentsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
-			Inverse: false,
-			Table:   expert.DepartmentTable,
-			Columns: expert.DepartmentPrimaryKey,
+			Inverse: true,
+			Table:   expert.DepartmentsTable,
+			Columns: expert.DepartmentsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(department.FieldID, field.TypeInt),
@@ -315,10 +315,10 @@ func (eu *ExpertUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if eu.mutation.TicketsCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
 			Table:   expert.TicketsTable,
-			Columns: expert.TicketsPrimaryKey,
+			Columns: []string{expert.TicketsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(ticket.FieldID, field.TypeInt64),
@@ -328,10 +328,10 @@ func (eu *ExpertUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if nodes := eu.mutation.RemovedTicketsIDs(); len(nodes) > 0 && !eu.mutation.TicketsCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
 			Table:   expert.TicketsTable,
-			Columns: expert.TicketsPrimaryKey,
+			Columns: []string{expert.TicketsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(ticket.FieldID, field.TypeInt64),
@@ -344,10 +344,10 @@ func (eu *ExpertUpdate) sqlSave(ctx context.Context) (n int, err error) {
 	}
 	if nodes := eu.mutation.TicketsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
 			Table:   expert.TicketsTable,
-			Columns: expert.TicketsPrimaryKey,
+			Columns: []string{expert.TicketsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(ticket.FieldID, field.TypeInt64),
@@ -462,14 +462,14 @@ func (euo *ExpertUpdateOne) SetNillableIsOnline(b *bool) *ExpertUpdateOne {
 	return euo
 }
 
-// AddDepartmentIDs adds the "department" edge to the Department entity by IDs.
+// AddDepartmentIDs adds the "departments" edge to the Department entity by IDs.
 func (euo *ExpertUpdateOne) AddDepartmentIDs(ids ...int) *ExpertUpdateOne {
 	euo.mutation.AddDepartmentIDs(ids...)
 	return euo
 }
 
-// AddDepartment adds the "department" edges to the Department entity.
-func (euo *ExpertUpdateOne) AddDepartment(d ...*Department) *ExpertUpdateOne {
+// AddDepartments adds the "departments" edges to the Department entity.
+func (euo *ExpertUpdateOne) AddDepartments(d ...*Department) *ExpertUpdateOne {
 	ids := make([]int, len(d))
 	for i := range d {
 		ids[i] = d[i].ID
@@ -497,20 +497,20 @@ func (euo *ExpertUpdateOne) Mutation() *ExpertMutation {
 	return euo.mutation
 }
 
-// ClearDepartment clears all "department" edges to the Department entity.
-func (euo *ExpertUpdateOne) ClearDepartment() *ExpertUpdateOne {
-	euo.mutation.ClearDepartment()
+// ClearDepartments clears all "departments" edges to the Department entity.
+func (euo *ExpertUpdateOne) ClearDepartments() *ExpertUpdateOne {
+	euo.mutation.ClearDepartments()
 	return euo
 }
 
-// RemoveDepartmentIDs removes the "department" edge to Department entities by IDs.
+// RemoveDepartmentIDs removes the "departments" edge to Department entities by IDs.
 func (euo *ExpertUpdateOne) RemoveDepartmentIDs(ids ...int) *ExpertUpdateOne {
 	euo.mutation.RemoveDepartmentIDs(ids...)
 	return euo
 }
 
-// RemoveDepartment removes "department" edges to Department entities.
-func (euo *ExpertUpdateOne) RemoveDepartment(d ...*Department) *ExpertUpdateOne {
+// RemoveDepartments removes "departments" edges to Department entities.
+func (euo *ExpertUpdateOne) RemoveDepartments(d ...*Department) *ExpertUpdateOne {
 	ids := make([]int, len(d))
 	for i := range d {
 		ids[i] = d[i].ID
@@ -646,12 +646,12 @@ func (euo *ExpertUpdateOne) sqlSave(ctx context.Context) (_node *Expert, err err
 	if value, ok := euo.mutation.IsOnline(); ok {
 		_spec.SetField(expert.FieldIsOnline, field.TypeBool, value)
 	}
-	if euo.mutation.DepartmentCleared() {
+	if euo.mutation.DepartmentsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
-			Inverse: false,
-			Table:   expert.DepartmentTable,
-			Columns: expert.DepartmentPrimaryKey,
+			Inverse: true,
+			Table:   expert.DepartmentsTable,
+			Columns: expert.DepartmentsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(department.FieldID, field.TypeInt),
@@ -659,12 +659,12 @@ func (euo *ExpertUpdateOne) sqlSave(ctx context.Context) (_node *Expert, err err
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := euo.mutation.RemovedDepartmentIDs(); len(nodes) > 0 && !euo.mutation.DepartmentCleared() {
+	if nodes := euo.mutation.RemovedDepartmentsIDs(); len(nodes) > 0 && !euo.mutation.DepartmentsCleared() {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
-			Inverse: false,
-			Table:   expert.DepartmentTable,
-			Columns: expert.DepartmentPrimaryKey,
+			Inverse: true,
+			Table:   expert.DepartmentsTable,
+			Columns: expert.DepartmentsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(department.FieldID, field.TypeInt),
@@ -675,12 +675,12 @@ func (euo *ExpertUpdateOne) sqlSave(ctx context.Context) (_node *Expert, err err
 		}
 		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
 	}
-	if nodes := euo.mutation.DepartmentIDs(); len(nodes) > 0 {
+	if nodes := euo.mutation.DepartmentsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
-			Inverse: false,
-			Table:   expert.DepartmentTable,
-			Columns: expert.DepartmentPrimaryKey,
+			Inverse: true,
+			Table:   expert.DepartmentsTable,
+			Columns: expert.DepartmentsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(department.FieldID, field.TypeInt),
@@ -693,10 +693,10 @@ func (euo *ExpertUpdateOne) sqlSave(ctx context.Context) (_node *Expert, err err
 	}
 	if euo.mutation.TicketsCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
 			Table:   expert.TicketsTable,
-			Columns: expert.TicketsPrimaryKey,
+			Columns: []string{expert.TicketsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(ticket.FieldID, field.TypeInt64),
@@ -706,10 +706,10 @@ func (euo *ExpertUpdateOne) sqlSave(ctx context.Context) (_node *Expert, err err
 	}
 	if nodes := euo.mutation.RemovedTicketsIDs(); len(nodes) > 0 && !euo.mutation.TicketsCleared() {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
 			Table:   expert.TicketsTable,
-			Columns: expert.TicketsPrimaryKey,
+			Columns: []string{expert.TicketsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(ticket.FieldID, field.TypeInt64),
@@ -722,10 +722,10 @@ func (euo *ExpertUpdateOne) sqlSave(ctx context.Context) (_node *Expert, err err
 	}
 	if nodes := euo.mutation.TicketsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
 			Table:   expert.TicketsTable,
-			Columns: expert.TicketsPrimaryKey,
+			Columns: []string{expert.TicketsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(ticket.FieldID, field.TypeInt64),

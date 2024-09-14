@@ -74,20 +74,34 @@ func (ec *ExpertCreate) SetIsOnline(b bool) *ExpertCreate {
 	return ec
 }
 
+// SetCreatedAt sets the "created_at" field.
+func (ec *ExpertCreate) SetCreatedAt(t time.Time) *ExpertCreate {
+	ec.mutation.SetCreatedAt(t)
+	return ec
+}
+
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
+func (ec *ExpertCreate) SetNillableCreatedAt(t *time.Time) *ExpertCreate {
+	if t != nil {
+		ec.SetCreatedAt(*t)
+	}
+	return ec
+}
+
 // SetID sets the "id" field.
 func (ec *ExpertCreate) SetID(i int) *ExpertCreate {
 	ec.mutation.SetID(i)
 	return ec
 }
 
-// AddDepartmentIDs adds the "department" edge to the Department entity by IDs.
+// AddDepartmentIDs adds the "departments" edge to the Department entity by IDs.
 func (ec *ExpertCreate) AddDepartmentIDs(ids ...int) *ExpertCreate {
 	ec.mutation.AddDepartmentIDs(ids...)
 	return ec
 }
 
-// AddDepartment adds the "department" edges to the Department entity.
-func (ec *ExpertCreate) AddDepartment(d ...*Department) *ExpertCreate {
+// AddDepartments adds the "departments" edges to the Department entity.
+func (ec *ExpertCreate) AddDepartments(d ...*Department) *ExpertCreate {
 	ids := make([]int, len(d))
 	for i := range d {
 		ids[i] = d[i].ID
@@ -153,6 +167,10 @@ func (ec *ExpertCreate) defaults() {
 		v := expert.DefaultEndTime()
 		ec.mutation.SetEndTime(v)
 	}
+	if _, ok := ec.mutation.CreatedAt(); !ok {
+		v := expert.DefaultCreatedAt()
+		ec.mutation.SetCreatedAt(v)
+	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -189,6 +207,9 @@ func (ec *ExpertCreate) check() error {
 	}
 	if _, ok := ec.mutation.IsOnline(); !ok {
 		return &ValidationError{Name: "is_online", err: errors.New(`ent: missing required field "Expert.is_online"`)}
+	}
+	if _, ok := ec.mutation.CreatedAt(); !ok {
+		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Expert.created_at"`)}
 	}
 	return nil
 }
@@ -246,12 +267,16 @@ func (ec *ExpertCreate) createSpec() (*Expert, *sqlgraph.CreateSpec) {
 		_spec.SetField(expert.FieldIsOnline, field.TypeBool, value)
 		_node.IsOnline = value
 	}
-	if nodes := ec.mutation.DepartmentIDs(); len(nodes) > 0 {
+	if value, ok := ec.mutation.CreatedAt(); ok {
+		_spec.SetField(expert.FieldCreatedAt, field.TypeTime, value)
+		_node.CreatedAt = value
+	}
+	if nodes := ec.mutation.DepartmentsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.M2M,
-			Inverse: false,
-			Table:   expert.DepartmentTable,
-			Columns: expert.DepartmentPrimaryKey,
+			Inverse: true,
+			Table:   expert.DepartmentsTable,
+			Columns: expert.DepartmentsPrimaryKey,
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(department.FieldID, field.TypeInt),
@@ -264,10 +289,10 @@ func (ec *ExpertCreate) createSpec() (*Expert, *sqlgraph.CreateSpec) {
 	}
 	if nodes := ec.mutation.TicketsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.M2M,
+			Rel:     sqlgraph.O2M,
 			Inverse: false,
 			Table:   expert.TicketsTable,
-			Columns: expert.TicketsPrimaryKey,
+			Columns: []string{expert.TicketsColumn},
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(ticket.FieldID, field.TypeInt64),

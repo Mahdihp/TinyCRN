@@ -289,7 +289,7 @@ func (c *CustomerClient) UpdateOne(cu *Customer) *CustomerUpdateOne {
 }
 
 // UpdateOneID returns an update builder for the given id.
-func (c *CustomerClient) UpdateOneID(id int) *CustomerUpdateOne {
+func (c *CustomerClient) UpdateOneID(id int64) *CustomerUpdateOne {
 	mutation := newCustomerMutation(c.config, OpUpdateOne, withCustomerID(id))
 	return &CustomerUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
@@ -306,7 +306,7 @@ func (c *CustomerClient) DeleteOne(cu *Customer) *CustomerDeleteOne {
 }
 
 // DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *CustomerClient) DeleteOneID(id int) *CustomerDeleteOne {
+func (c *CustomerClient) DeleteOneID(id int64) *CustomerDeleteOne {
 	builder := c.Delete().Where(customer.ID(id))
 	builder.mutation.id = &id
 	builder.mutation.op = OpDeleteOne
@@ -323,12 +323,12 @@ func (c *CustomerClient) Query() *CustomerQuery {
 }
 
 // Get returns a Customer entity by its id.
-func (c *CustomerClient) Get(ctx context.Context, id int) (*Customer, error) {
+func (c *CustomerClient) Get(ctx context.Context, id int64) (*Customer, error) {
 	return c.Query().Where(customer.ID(id)).Only(ctx)
 }
 
 // GetX is like Get, but panics if an error occurs.
-func (c *CustomerClient) GetX(ctx context.Context, id int) *Customer {
+func (c *CustomerClient) GetX(ctx context.Context, id int64) *Customer {
 	obj, err := c.Get(ctx, id)
 	if err != nil {
 		panic(err)
@@ -344,7 +344,7 @@ func (c *CustomerClient) QueryTickets(cu *Customer) *TicketQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(customer.Table, customer.FieldID, id),
 			sqlgraph.To(ticket.Table, ticket.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, false, customer.TicketsTable, customer.TicketsPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.O2M, false, customer.TicketsTable, customer.TicketsColumn),
 		)
 		fromV = sqlgraph.Neighbors(cu.driver.Dialect(), step)
 		return fromV, nil
@@ -485,15 +485,15 @@ func (c *DepartmentClient) GetX(ctx context.Context, id int) *Department {
 	return obj
 }
 
-// QueryExpert queries the expert edge of a Department.
-func (c *DepartmentClient) QueryExpert(d *Department) *ExpertQuery {
+// QueryExperts queries the experts edge of a Department.
+func (c *DepartmentClient) QueryExperts(d *Department) *ExpertQuery {
 	query := (&ExpertClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := d.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(department.Table, department.FieldID, id),
 			sqlgraph.To(expert.Table, expert.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, department.ExpertTable, department.ExpertPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.M2M, false, department.ExpertsTable, department.ExpertsPrimaryKey...),
 		)
 		fromV = sqlgraph.Neighbors(d.driver.Dialect(), step)
 		return fromV, nil
@@ -509,7 +509,7 @@ func (c *DepartmentClient) QueryTickets(d *Department) *TicketQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(department.Table, department.FieldID, id),
 			sqlgraph.To(ticket.Table, ticket.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, false, department.TicketsTable, department.TicketsPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.O2M, false, department.TicketsTable, department.TicketsColumn),
 		)
 		fromV = sqlgraph.Neighbors(d.driver.Dialect(), step)
 		return fromV, nil
@@ -650,15 +650,15 @@ func (c *ExpertClient) GetX(ctx context.Context, id int) *Expert {
 	return obj
 }
 
-// QueryDepartment queries the department edge of a Expert.
-func (c *ExpertClient) QueryDepartment(e *Expert) *DepartmentQuery {
+// QueryDepartments queries the departments edge of a Expert.
+func (c *ExpertClient) QueryDepartments(e *Expert) *DepartmentQuery {
 	query := (&DepartmentClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := e.ID
 		step := sqlgraph.NewStep(
 			sqlgraph.From(expert.Table, expert.FieldID, id),
 			sqlgraph.To(department.Table, department.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, false, expert.DepartmentTable, expert.DepartmentPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.M2M, true, expert.DepartmentsTable, expert.DepartmentsPrimaryKey...),
 		)
 		fromV = sqlgraph.Neighbors(e.driver.Dialect(), step)
 		return fromV, nil
@@ -674,7 +674,7 @@ func (c *ExpertClient) QueryTickets(e *Expert) *TicketQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(expert.Table, expert.FieldID, id),
 			sqlgraph.To(ticket.Table, ticket.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, false, expert.TicketsTable, expert.TicketsPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.O2M, false, expert.TicketsTable, expert.TicketsColumn),
 		)
 		fromV = sqlgraph.Neighbors(e.driver.Dialect(), step)
 		return fromV, nil
@@ -823,7 +823,7 @@ func (c *TicketClient) QueryCustomerID(t *Ticket) *CustomerQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(ticket.Table, ticket.FieldID, id),
 			sqlgraph.To(customer.Table, customer.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, ticket.CustomerIDTable, ticket.CustomerIDPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.M2O, true, ticket.CustomerIDTable, ticket.CustomerIDColumn),
 		)
 		fromV = sqlgraph.Neighbors(t.driver.Dialect(), step)
 		return fromV, nil
@@ -839,7 +839,7 @@ func (c *TicketClient) QueryExpertID(t *Ticket) *ExpertQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(ticket.Table, ticket.FieldID, id),
 			sqlgraph.To(expert.Table, expert.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, ticket.ExpertIDTable, ticket.ExpertIDPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.M2O, true, ticket.ExpertIDTable, ticket.ExpertIDColumn),
 		)
 		fromV = sqlgraph.Neighbors(t.driver.Dialect(), step)
 		return fromV, nil
@@ -855,7 +855,7 @@ func (c *TicketClient) QueryDepartmentID(t *Ticket) *DepartmentQuery {
 		step := sqlgraph.NewStep(
 			sqlgraph.From(ticket.Table, ticket.FieldID, id),
 			sqlgraph.To(department.Table, department.FieldID),
-			sqlgraph.Edge(sqlgraph.M2M, true, ticket.DepartmentIDTable, ticket.DepartmentIDPrimaryKey...),
+			sqlgraph.Edge(sqlgraph.M2O, true, ticket.DepartmentIDTable, ticket.DepartmentIDColumn),
 		)
 		fromV = sqlgraph.Neighbors(t.driver.Dialect(), step)
 		return fromV, nil

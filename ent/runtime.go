@@ -3,6 +3,8 @@
 package ent
 
 import (
+	"TinyCRM/ent/customer"
+	"TinyCRM/ent/department"
 	"TinyCRM/ent/expert"
 	"TinyCRM/ent/schema"
 	"TinyCRM/ent/ticket"
@@ -13,6 +15,30 @@ import (
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
+	customerFields := schema.Customer{}.Fields()
+	_ = customerFields
+	// customerDescUsername is the schema descriptor for username field.
+	customerDescUsername := customerFields[1].Descriptor()
+	// customer.UsernameValidator is a validator for the "username" field. It is called by the builders before save.
+	customer.UsernameValidator = customerDescUsername.Validators[0].(func(string) error)
+	// customerDescFirstName is the schema descriptor for first_name field.
+	customerDescFirstName := customerFields[2].Descriptor()
+	// customer.FirstNameValidator is a validator for the "first_name" field. It is called by the builders before save.
+	customer.FirstNameValidator = customerDescFirstName.Validators[0].(func(string) error)
+	// customerDescLastName is the schema descriptor for last_name field.
+	customerDescLastName := customerFields[3].Descriptor()
+	// customer.LastNameValidator is a validator for the "last_name" field. It is called by the builders before save.
+	customer.LastNameValidator = customerDescLastName.Validators[0].(func(string) error)
+	// customerDescCreatedAt is the schema descriptor for created_at field.
+	customerDescCreatedAt := customerFields[4].Descriptor()
+	// customer.DefaultCreatedAt holds the default value on creation for the created_at field.
+	customer.DefaultCreatedAt = customerDescCreatedAt.Default.(func() time.Time)
+	departmentFields := schema.Department{}.Fields()
+	_ = departmentFields
+	// departmentDescName is the schema descriptor for name field.
+	departmentDescName := departmentFields[1].Descriptor()
+	// department.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	department.NameValidator = departmentDescName.Validators[0].(func(string) error)
 	expertFields := schema.Expert{}.Fields()
 	_ = expertFields
 	// expertDescUsername is the schema descriptor for username field.
@@ -35,14 +61,22 @@ func init() {
 	expertDescEndTime := expertFields[5].Descriptor()
 	// expert.DefaultEndTime holds the default value on creation for the end_time field.
 	expert.DefaultEndTime = expertDescEndTime.Default.(func() time.Time)
+	// expertDescCreatedAt is the schema descriptor for created_at field.
+	expertDescCreatedAt := expertFields[7].Descriptor()
+	// expert.DefaultCreatedAt holds the default value on creation for the created_at field.
+	expert.DefaultCreatedAt = expertDescCreatedAt.Default.(func() time.Time)
 	ticketFields := schema.Ticket{}.Fields()
 	_ = ticketFields
 	// ticketDescTitle is the schema descriptor for title field.
 	ticketDescTitle := ticketFields[1].Descriptor()
 	// ticket.TitleValidator is a validator for the "title" field. It is called by the builders before save.
 	ticket.TitleValidator = ticketDescTitle.Validators[0].(func(string) error)
-	// ticketDescContent is the schema descriptor for content field.
-	ticketDescContent := ticketFields[2].Descriptor()
-	// ticket.ContentValidator is a validator for the "content" field. It is called by the builders before save.
-	ticket.ContentValidator = ticketDescContent.Validators[0].(func(string) error)
+	// ticketDescIsViewed is the schema descriptor for is_viewed field.
+	ticketDescIsViewed := ticketFields[5].Descriptor()
+	// ticket.DefaultIsViewed holds the default value on creation for the is_viewed field.
+	ticket.DefaultIsViewed = ticketDescIsViewed.Default.(bool)
+	// ticketDescCreatedAt is the schema descriptor for created_at field.
+	ticketDescCreatedAt := ticketFields[6].Descriptor()
+	// ticket.DefaultCreatedAt holds the default value on creation for the created_at field.
+	ticket.DefaultCreatedAt = ticketDescCreatedAt.Default.(func() time.Time)
 }
