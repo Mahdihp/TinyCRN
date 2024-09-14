@@ -1,0 +1,25 @@
+{
+  "Server": {
+    "Host": "localhost",
+    "Port": ":8000"
+  },
+  "DbConfig": {
+    "Host": "localhost",
+    "DbName": "postgres",
+    "DbPort": 5432,
+    "Username": "root",
+    "Password": "123456"
+  },
+  "Migration": {
+    "MigrationDir": "migrations/sqlite3",
+    "MigrationTable": "migrations"
+  },
+  "AuthConfig": {
+    "SignKey": "jwt_secret",
+    "AccessExpirationTime": "24h",
+    "RefreshExpirationTime": "24h",
+    "AccessSubject": "ac",
+    "RefreshSubject": "rt",
+    "GracefulShutdownTimeout": "5s"
+  }
+}

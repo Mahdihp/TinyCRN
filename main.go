@@ -1,15 +1,22 @@
 package main
 
 import (
+	"TinyCRM/config"
 	"TinyCRM/ent"
 	"context"
+	"fmt"
 	_ "github.com/lib/pq"
 	"log"
 )
 
 func main() {
 
-	client, err := ent.Open("postgres", "host=localhost port=5432 user=root dbname=TinyCRMDB password=123456 sslmode=disable")
+	appConfig := config.Initialize()
+
+	ConnetionString := fmt.Sprintf("host=%s port=%d user=%s dbname=%s password=%s sslmode=disable",
+		appConfig.DbConfig.Host, appConfig.DbConfig.DbPort, appConfig.DbConfig.Username, appConfig.DbConfig.DbName, appConfig.DbConfig.Password)
+
+	client, err := ent.Open("postgres", ConnetionString)
 	if err != nil {
 		log.Fatalf("failed opening connection to postgres: %v", err)
 	}
