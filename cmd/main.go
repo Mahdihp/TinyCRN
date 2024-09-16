@@ -11,10 +11,16 @@ import (
 
 func main() {
 
-	appConfig := config.Initialize()
+	cfg := config.Initialize()
+	fmt.Println(cfg)
+	//InitDb(appConfig)
+
+}
+
+func InitDb(cfg config.AppConfiguration) {
 
 	ConnetionString := fmt.Sprintf("host=%s port=%d user=%s dbname=%s password=%s sslmode=disable",
-		appConfig.DbConfig.Host, appConfig.DbConfig.DbPort, appConfig.DbConfig.Username, appConfig.DbConfig.DbName, appConfig.DbConfig.Password)
+		cfg.DbConfig.Host, cfg.DbConfig.DbPort, cfg.DbConfig.Username, cfg.DbConfig.DbName, cfg.DbConfig.Password)
 
 	client, err := ent.Open("postgres", ConnetionString)
 	if err != nil {
@@ -25,5 +31,4 @@ func main() {
 	if err := client.Schema.Create(context.Background()); err != nil {
 		log.Fatalf("failed creating schema resources: %v", err)
 	}
-
 }

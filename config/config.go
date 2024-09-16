@@ -27,6 +27,7 @@ type DbConfig struct {
 	DbName   string
 	Username string
 	Password string
+	SeedData bool
 }
 type Migration struct {
 	MigrationDir   string

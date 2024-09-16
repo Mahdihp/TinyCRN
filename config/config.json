@@ -8,7 +8,8 @@
     "DbName": "postgres",
     "DbPort": 5432,
     "Username": "root",
-    "Password": "123456"
+    "Password": "123456",
+    "SeedData": true
   },
   "Migration": {
     "MigrationDir": "migrations/sqlite3",
