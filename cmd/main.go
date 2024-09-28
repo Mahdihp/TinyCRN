@@ -13,7 +13,7 @@ func main() {
 
 	cfg := config.Initialize()
 	fmt.Println(cfg)
-	//InitDb(appConfig)
+	InitDb(cfg)
 
 }
 

@@ -14,6 +14,10 @@ type PostgresDB struct {
 	client *ent.Client
 }
 
+func (m *PostgresDB) Connection() *ent.Client {
+	return m.client
+}
+
 func New(cfg config.DbConfig) *PostgresDB {
 	//ConnetionString := "postgres://postgres:postgres@localhost:5432/postgres"
 	ConnetionString := fmt.Sprintf("host=%s port=%d user=%s dbname=%s password=%s sslmode=disable",
